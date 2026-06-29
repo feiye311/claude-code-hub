@@ -939,6 +939,20 @@ export async function categorizeErrorAsync(error: Error): Promise<ErrorCategory>
     return ErrorCategory.SYSTEM_ERROR;
   }
 
+  // 优先级 1.6: 503 + Code:1105 特殊处理（系统繁忙，强制重试）
+  // 某些上游返回 503 + {"Code":1105,"Message":"The system is busy, please try again later."}
+  // 这种错误应该始终重试，不受错误规则影响
+  if (
+    error instanceof ProxyError &&
+    error.statusCode === 503 &&
+    error.upstreamError?.parsed &&
+    typeof error.upstreamError.parsed === "object" &&
+    error.upstreamError.parsed !== null &&
+    (error.upstreamError.parsed as Record<string, unknown>).Code === 1105
+  ) {
+    return ErrorCategory.PROVIDER_ERROR; // 强制作为供应商错误，触发重试
+  }
+
   // 优先级 2: 不可重试的客户端输入错误检测（白名单模式）
   // 使用异步版本确保错误规则已加载
   if (await isNonRetryableClientErrorAsync(error)) {

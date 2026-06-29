@@ -200,7 +200,10 @@ interface UpstreamFetchConfig {
 /** 各 Provider 类型的请求配置 */
 const UPSTREAM_CONFIGS: Record<string, UpstreamFetchConfig> = {
   claude: {
-    buildUrl: (baseUrl) => `${baseUrl}/v1/models`,
+    buildUrl: (baseUrl) => {
+      const prefix = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
+      return `${prefix}/models`;
+    },
     buildHeaders: (p) => ({ "x-api-key": p.key, "anthropic-version": "2023-06-01" }),
     parseResponse: (body) => {
       const data =
@@ -210,7 +213,10 @@ const UPSTREAM_CONFIGS: Record<string, UpstreamFetchConfig> = {
     },
   },
   openai: {
-    buildUrl: (baseUrl) => `${baseUrl}/v1/models`,
+    buildUrl: (baseUrl) => {
+      const prefix = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
+      return `${prefix}/models`;
+    },
     buildHeaders: (p) => ({ Authorization: `Bearer ${p.key}` }),
     parseResponse: (body) => {
       const data = (body as { data?: Array<{ id: string }> }).data || [];
