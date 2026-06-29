@@ -126,6 +126,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2",
+    "@radix-ui/react-portal": "^1.1.12",
+    "@radix-ui/react-visually-hidden": "^1.2.6",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/geojson": "^7946.0.16",
     "@types/ioredis": "^5",
@@ -142,6 +144,7 @@
     "drizzle-kit": "^0.31",
     "happy-dom": "^20",
     "openapi-typescript": "^7.13.0",
+    "swr": "^2.4.2",
     "tailwindcss": "^4",
     "typescript": "^6",
     "vitest": "^4"
