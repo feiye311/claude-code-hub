@@ -22,7 +22,7 @@ export default async function DashboardModelsPage({
       <Section
         title={t("section.title")}
         description={t("section.description")}
-        icon="brain"
+        icon="database"
         iconColor="text-purple-500"
       >
         <ModelListContainer />

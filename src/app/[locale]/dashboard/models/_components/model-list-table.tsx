@@ -1,6 +1,5 @@
 "use client";
 
-import { copy } from "copy-to-clipboard";
 import { Check, Copy, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +46,7 @@ export function ModelListTable({ models }: ModelListTableProps) {
   const [testModel, setTestModel] = useState<ModelItem | null>(null);
 
   const handleCopy = (model: string) => {
-    copy(model);
+    navigator.clipboard.writeText(model);
     setCopiedModel(model);
     setTimeout(() => setCopiedModel(null), 2000);
   };
