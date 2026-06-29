@@ -582,4 +582,3 @@ export async function handleAvailableModels(c: Context): Promise<Response> {
     throw e;
   }
 }
-
