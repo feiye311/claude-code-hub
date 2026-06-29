@@ -814,6 +814,7 @@
     "quotasManagement": "Quotas",
     "userManagement": "Users",
     "providers": "Providers",
+    "models": "Models",
     "auditLogs": "Audit logs",
     "documentation": "Docs",
     "systemSettings": "Settings",
