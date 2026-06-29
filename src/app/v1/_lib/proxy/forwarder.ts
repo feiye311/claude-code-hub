@@ -1426,23 +1426,29 @@ export class ProxyForwarder {
 
                   if (!checkDone && checkValue && checkValue.byteLength > 0) {
                     const firstChunkText = new TextDecoder().decode(checkValue);
-                    const firstChunkDetected = detectUpstreamErrorFromSseOrJsonText(firstChunkText, {
-                      maxJsonCharsForMessageCheck: 0,
-                    });
+                    const firstChunkDetected = detectUpstreamErrorFromSseOrJsonText(
+                      firstChunkText,
+                      {
+                        maxJsonCharsForMessageCheck: 0,
+                      }
+                    );
 
                     if (firstChunkDetected.isError) {
                       const inferredStatus = inferUpstreamErrorStatusCodeFromText(firstChunkText);
                       const inferredStatusCode = inferredStatus?.statusCode;
 
                       if (inferredStatusCode && inferredStatusCode >= 400) {
-                        logger.warn("ProxyForwarder: Fake 200 detected in first SSE chunk, retrying", {
-                          providerId: currentProvider.id,
-                          providerName: currentProvider.name,
-                          attemptNumber: attemptCount,
-                          totalProvidersAttempted,
-                          inferredStatusCode,
-                          errorCode: firstChunkDetected.code,
-                        });
+                        logger.warn(
+                          "ProxyForwarder: Fake 200 detected in first SSE chunk, retrying",
+                          {
+                            providerId: currentProvider.id,
+                            providerName: currentProvider.name,
+                            attemptNumber: attemptCount,
+                            totalProvidersAttempted,
+                            inferredStatusCode,
+                            errorCode: firstChunkDetected.code,
+                          }
+                        );
 
                         throw new ProxyError(firstChunkDetected.code, inferredStatusCode, {
                           body: firstChunkDetected.detail ?? "",
@@ -1459,10 +1465,16 @@ export class ProxyForwarder {
                 if (firstChunkError instanceof ProxyError) {
                   throw firstChunkError;
                 }
-                logger.debug("ProxyForwarder: First chunk check failed, continuing with deferred finalization", {
-                  providerId: currentProvider.id,
-                  error: firstChunkError instanceof Error ? firstChunkError.message : String(firstChunkError),
-                });
+                logger.debug(
+                  "ProxyForwarder: First chunk check failed, continuing with deferred finalization",
+                  {
+                    providerId: currentProvider.id,
+                    error:
+                      firstChunkError instanceof Error
+                        ? firstChunkError.message
+                        : String(firstChunkError),
+                  }
+                );
               }
             }
 
