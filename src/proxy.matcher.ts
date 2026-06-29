@@ -9,8 +9,8 @@
 //   immediately for these paths). Anchored to a path-segment boundary
 //   (`/` or end of string) so future routes like `/v10/...` are NOT
 //   accidentally excluded.
-// - _next/static (static files)
-// - _next/image  (image optimization files)
+// - _next        (all Next.js internal paths: static files, image optimization,
+//   HMR WebSocket, etc.)
 // - favicon.ico  (favicon file)
 //
 // IMPORTANT: keep this pattern in sync with the inlined literal in
@@ -18,4 +18,4 @@
 // literals so its build-time static analyzer can collect them. The unit
 // test in `tests/unit/proxy-matcher.test.ts` enforces drift between the two.
 export const proxyMatcherPattern =
-  "/((?!api|v1(?:/|$)|v1beta(?:/|$)|_next/static|_next/image|favicon.ico).*)";
+  "/((?!api|v1(?:/|$)|v1beta(?:/|$)|_next|favicon.ico).*)";
