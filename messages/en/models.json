@@ -1,0 +1,58 @@
+{
+  "title": "Model Management",
+  "description": "View usage, provider distribution, and call statistics for all models",
+  "section": {
+    "title": "Model List",
+    "description": "Statistics for all used models"
+  },
+  "table": {
+    "model": "Model Name",
+    "calls": "Calls",
+    "successRate": "Success Rate",
+    "providers": "Providers",
+    "actions": "Actions"
+  },
+  "detail": {
+    "title": "Model Details",
+    "overview": "Overview",
+    "tokenStats": "Token Statistics",
+    "providerDistribution": "Provider Distribution",
+    "totalCalls": "Total Calls",
+    "successRate": "Success Rate",
+    "avgDuration": "Avg Duration",
+    "totalCost": "Total Cost",
+    "inputTokens": "Input Tokens",
+    "outputTokens": "Output Tokens"
+  },
+  "test": {
+    "title": "Test Model",
+    "description": "Select a provider and send a message to test the model",
+    "selectProvider": "Select Provider",
+    "placeholder": "Type a message... (Enter to send, Shift+Enter for new line)",
+    "send": "Send",
+    "stop": "Stop",
+    "startHint": "Send a message to start testing"
+  },
+  "search": {
+    "placeholder": "Search model name..."
+  },
+  "period": {
+    "7d": "Last 7 days",
+    "30d": "Last 30 days",
+    "90d": "Last 90 days",
+    "1y": "Last year"
+  },
+  "pagination": {
+    "total": "{count} models",
+    "prev": "Previous",
+    "next": "Next",
+    "page": "Page {page}"
+  },
+  "empty": "No model data",
+  "loading": "Loading...",
+  "error": "Failed to load: {error}",
+  "copy": "Copy Model ID",
+  "copied": "Copied",
+  "detailBtn": "Details",
+  "testBtn": "Test"
+}
