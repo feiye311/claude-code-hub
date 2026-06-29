@@ -3,12 +3,6 @@
  * 在服务器启动时自动执行数据库迁移
  */
 
-import { startCacheCleanup } from "@/lib/cache/session-cache";
-import { getBenignBrokenPipeCode } from "@/lib/lifecycle/benign-errors";
-import { logger } from "@/lib/logger";
-import { CHANNEL_API_KEYS_UPDATED, subscribeCacheInvalidation } from "@/lib/redis/pubsub";
-import { apiKeyVacuumFilter } from "@/lib/security/api-key-vacuum-filter";
-
 // instrumentation 需要 Node.js runtime（依赖数据库与 Redis 等 Node 能力）
 export const runtime = "nodejs";
 
@@ -37,11 +31,15 @@ const instrumentationState = globalThis as unknown as {
  *
  * 这两个 process.on(...) 不会与现有的 SIGTERM / SIGINT 处理器冲突。
  */
-export function registerCrashDiagnostics(): void {
+export async function registerCrashDiagnostics(): Promise<void> {
   if (instrumentationState.__CCH_CRASH_HANDLERS_REGISTERED__) {
     return;
   }
   instrumentationState.__CCH_CRASH_HANDLERS_REGISTERED__ = true;
+
+  // 动态导入 Node.js 模块，避免 Edge Runtime 警告
+  const { getBenignBrokenPipeCode } = await import("@/lib/lifecycle/benign-errors");
+  const { logger } = await import("@/lib/logger");
 
   const writeReport = (trigger: string, err: unknown): string | undefined => {
     try {
@@ -139,12 +137,14 @@ export function registerCrashDiagnostics(): void {
   });
 }
 
-function logStartupMarker(): void {
+async function logStartupMarker(): Promise<void> {
   if (instrumentationState.__CCH_LIFECYCLE_MARKERS_LOGGED__) {
     return;
   }
   instrumentationState.__CCH_LIFECYCLE_MARKERS_LOGGED__ = true;
   instrumentationState.__CCH_PROCESS_STARTED_AT__ = Date.now();
+  
+  const { logger } = await import("@/lib/logger");
   logger.info("[Lifecycle] Process started", {
     pid: process.pid,
     nodeVersion: process.version,
@@ -237,6 +237,10 @@ async function startApiKeyVacuumFilterSync(): Promise<void> {
   }
 
   try {
+    const { logger } = await import("@/lib/logger");
+    const { CHANNEL_API_KEYS_UPDATED, subscribeCacheInvalidation } = await import("@/lib/redis/pubsub");
+    const { apiKeyVacuumFilter } = await import("@/lib/security/api-key-vacuum-filter");
+    
     const cleanup = await subscribeCacheInvalidation(CHANNEL_API_KEYS_UPDATED, () => {
       apiKeyVacuumFilter.invalidateAndReload({ reason: "api_keys_updated" });
     });
@@ -249,13 +253,14 @@ async function startApiKeyVacuumFilterSync(): Promise<void> {
     instrumentationState.__CCH_API_KEY_VF_SYNC_CLEANUP__ = cleanup;
     logger.info("[Instrumentation] API Key Vacuum Filter sync enabled");
   } catch (error) {
-    logger.warn("[Instrumentation] API Key Vacuum Filter sync init failed", {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    // 忽略导入错误
   }
 }
 
-function warmupApiKeyVacuumFilter(): void {
+async function warmupApiKeyVacuumFilter(): Promise<void> {
+  const { logger } = await import("@/lib/logger");
+  const { apiKeyVacuumFilter } = await import("@/lib/security/api-key-vacuum-filter");
+  
   // 预热 API Key Vacuum Filter（减少无效 key 对 DB 的压力）
   try {
     apiKeyVacuumFilter.startBackgroundReload({ reason: "startup" });
@@ -272,11 +277,14 @@ function warmupApiKeyVacuumFilter(): void {
 export async function register() {
   // 仅在服务器端执行
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // 动态导入 logger，避免 Edge Runtime 警告
+    const { logger } = await import("@/lib/logger");
+    
     // 生命周期与崩溃诊断（issue #1147）
     // - startup marker：让运维能从日志中区分 "正常启动" 与 "Docker 异常重启后立即恢复"
     // - crash handlers：兜底 uncaughtException / unhandledRejection，并触发 Node 诊断报告
-    logStartupMarker();
-    registerCrashDiagnostics();
+    await logStartupMarker();
+    await registerCrashDiagnostics();
 
     // Initialize Langfuse observability (no-op if env vars not set)
     try {
@@ -296,6 +304,7 @@ export async function register() {
     }
 
     if (!instrumentationState.__CCH_CACHE_CLEANUP_STARTED__) {
+      const { startCacheCleanup } = await import("@/lib/cache/session-cache");
       startCacheCleanup(60);
       instrumentationState.__CCH_CACHE_CLEANUP_STARTED__ = true;
       logger.info("[Instrumentation] Session cache cleanup started", {
