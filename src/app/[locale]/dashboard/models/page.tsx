@@ -1,4 +1,3 @@
-import { Brain } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Section } from "@/components/section";
 import { ModelListContainer } from "./_components/model-list-container";
