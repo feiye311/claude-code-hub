@@ -1413,6 +1413,59 @@ export class ProxyForwarder {
           // 解决：Forwarder 只负责尽快把 Response 返回给下游开始透传，
           // 把最终成功/失败结算延迟到 ResponseHandler：等 SSE 正常结束后再基于最终 body 补充检查并更新内部状态。
           if (isSSE) {
+            // ========== Fake-200 快速检测：读取第一个 chunk 检查是否为错误 ==========
+            // 对于流式响应，如果第一个 chunk 就是错误 JSON，可以提前检测并触发重试
+            // 避免等整个流结束后才发现错误（此时已经无法重试）
+            if (attemptCount < maxAttemptsPerProvider) {
+              try {
+                const clonedForCheck = response.clone();
+                const checkReader = clonedForCheck.body?.getReader();
+                if (checkReader) {
+                  const { done: checkDone, value: checkValue } = await checkReader.read();
+                  checkReader.cancel();
+
+                  if (!checkDone && checkValue && checkValue.byteLength > 0) {
+                    const firstChunkText = new TextDecoder().decode(checkValue);
+                    const firstChunkDetected = detectUpstreamErrorFromSseOrJsonText(firstChunkText, {
+                      maxJsonCharsForMessageCheck: 0,
+                    });
+
+                    if (firstChunkDetected.isError) {
+                      const inferredStatus = inferUpstreamErrorStatusCodeFromText(firstChunkText);
+                      const inferredStatusCode = inferredStatus?.statusCode;
+
+                      if (inferredStatusCode && inferredStatusCode >= 400) {
+                        logger.warn("ProxyForwarder: Fake 200 detected in first SSE chunk, retrying", {
+                          providerId: currentProvider.id,
+                          providerName: currentProvider.name,
+                          attemptNumber: attemptCount,
+                          totalProvidersAttempted,
+                          inferredStatusCode,
+                          errorCode: firstChunkDetected.code,
+                        });
+
+                        throw new ProxyError(firstChunkDetected.code, inferredStatusCode, {
+                          body: firstChunkDetected.detail ?? "",
+                          providerId: currentProvider.id,
+                          providerName: currentProvider.name,
+                          statusCodeInferred: true,
+                          statusCodeInferenceMatcherId: inferredStatus?.matcherId,
+                        });
+                      }
+                    }
+                  }
+                }
+              } catch (firstChunkError) {
+                if (firstChunkError instanceof ProxyError) {
+                  throw firstChunkError;
+                }
+                logger.debug("ProxyForwarder: First chunk check failed, continuing with deferred finalization", {
+                  providerId: currentProvider.id,
+                  error: firstChunkError instanceof Error ? firstChunkError.message : String(firstChunkError),
+                });
+              }
+            }
+
             setDeferredStreamingFinalization(session, {
               providerId: currentProvider.id,
               providerName: currentProvider.name,
