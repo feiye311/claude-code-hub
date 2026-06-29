@@ -4,7 +4,7 @@ import { messageRequest, providers } from "@/drizzle/schema";
 import { requireAuth } from "@/lib/api/v1/_shared/auth-middleware";
 import { createProblemResponse } from "@/lib/api/v1/_shared/error-envelope";
 import { jsonResponse } from "@/lib/api/v1/_shared/response-helpers";
-import { and, count, desc, eq, gte, ilike, isNull, lte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, isNull, sql } from "drizzle-orm";
 
 /**
  * 获取模型列表（带统计信息）
