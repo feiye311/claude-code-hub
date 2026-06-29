@@ -165,6 +165,8 @@ async function logStartupMarker(): Promise<void> {
  * 注意: 此函数会传播关键错误,调用者应决定是否需要优雅降级
  */
 async function syncErrorRulesAndInitializeDetector(): Promise<void> {
+  const { logger } = await import("@/lib/logger");
+  
   // 同步默认错误规则到数据库 - 每次启动都完整同步
   const { syncDefaultErrorRules } = await import("@/repository/error-rules");
   const syncResult = await syncDefaultErrorRules();
@@ -189,6 +191,8 @@ async function startCloudPriceSyncScheduler(): Promise<void> {
   if (instrumentationState.__CCH_CLOUD_PRICE_SYNC_STARTED__) {
     return;
   }
+
+  const { logger } = await import("@/lib/logger");
 
   try {
     const { requestCloudPriceTableSync } = await import("@/lib/price-sync/cloud-price-updater");
