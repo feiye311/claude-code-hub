@@ -95,7 +95,7 @@ const ERROR_STATUS_MATCHERS: Array<{ statusCode: number; matcherId: string; re: 
   {
     statusCode: 429,
     matcherId: "rate_limit",
-    re: /(?:\bHTTP\/\d(?:\.\d)?\s+429(?![\p{L}\p{N}_]|\.\d)|(?<![\p{L}\p{N}_.])429(?![\p{L}\p{N}_]|\.\d)\s+too\s+many\s+requests\b|\btoo\s+many\s+requests\b|\brate\s*limit(?:ed|ing)?\b|\bthrottl(?:e|ed|ing)\b|\bretry-after\b|\bRESOURCE_EXHAUSTED\b|\bRequestLimitExceeded\b|\bThrottling(?:Exception)?\b|\bNotEnoughCvError\b|\bError\s*1015(?![\p{L}\p{N}_]|\.\d)|超出频率|请求过于频繁|限流|稍后重试)/iu,
+    re: /(?:\bHTTP\/\d(?:\.\d)?\s+429(?![\p{L}\p{N}_]|\.\d)|(?<![\p{L}\p{N}_.])429(?![\p{L}\p{N}_]|\.\d)\s+too\s+many\s+requests\b|\btoo\s+many\s+requests\b|\brate\s*limit(?:ed|ing)?\b|\bthrottl(?:e|ed|ing)\b|\bretry-after\b|\bRESOURCE_EXHAUSTED\b|\bRequestLimitExceeded\b|\bThrottling(?:Exception)?\b|\bNotEnoughCvError\b|\bCode["\s:]*1105\b|\bError\s*1015(?![\p{L}\p{N}_]|\.\d)|超出频率|请求过于频繁|限流|稍后重试)/iu,
   },
   {
     statusCode: 402,

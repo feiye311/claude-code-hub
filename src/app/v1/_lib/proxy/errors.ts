@@ -939,23 +939,6 @@ export async function categorizeErrorAsync(error: Error): Promise<ErrorCategory>
     return ErrorCategory.SYSTEM_ERROR;
   }
 
-  // 优先级 1.6: 503 + Code:1105 特殊处理（并发限流，强制重试）
-  // 某些上游返回 503 + {"Code":1105,"Message":"The system is busy, please try again later."}
-  // Code:1105 表示并发数不足，归类为 429 限流
-  // 注意：Code:1105 可能嵌套在 error.message 字符串中，需要从响应体中提取
-  if (
-    error instanceof ProxyError &&
-    error.statusCode === 503
-  ) {
-    // 检查响应体中是否包含 Code:1105
-    const errorBody = error.upstreamError?.body || error.message;
-    if (errorBody.includes('"Code":1105') || errorBody.includes('"Code": 1105')) {
-      // 将 statusCode 从 503 改为 429，标记为限流错误
-      (error as any).statusCode = 429;
-      return ErrorCategory.PROVIDER_ERROR; // 触发重试和供应商切换
-    }
-  }
-
   // 优先级 2: 不可重试的客户端输入错误检测（白名单模式）
   // 使用异步版本确保错误规则已加载
   if (await isNonRetryableClientErrorAsync(error)) {
