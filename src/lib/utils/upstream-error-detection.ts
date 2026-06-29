@@ -100,7 +100,7 @@ const ERROR_STATUS_MATCHERS: Array<{ statusCode: number; matcherId: string; re: 
   {
     statusCode: 402,
     matcherId: "payment_required",
-    re: /(?:\bHTTP\/\d(?:\.\d)?\s+402(?![\p{L}\p{N}_]|\.\d)|\bpayment\s+required\b|\binsufficient\s+(?:balance|funds|credits)\b|\b(?:out\s+of|no)\s+credits\b|\binsufficient_balance\b|\bbilling_hard_limit_reached\b|\bcard\s+(?:declined|expired)\b|\bpayment\s+(?:method|failed)\b|余额不足|欠费|请充值|支付(?:失败|方式))/iu,
+    re: /(?:\bHTTP\/\d(?:\.\d)?\s+402(?![\p{L}\p{N}_]|\.\d)|\bpayment\s+required\b|\binsufficient\s+(?:balance|funds|credits)\b|\b(?:out\s+of|no)\s+credits\b|\binsufficient_balance\b|\bbilling_hard_limit_reached\b|\bcard\s+(?:declined|expired)\b|\bpayment\s+(?:method|failed)\b|\bNotEnoughCvError\b|余额不足|欠费|请充值|支付(?:失败|方式))/iu,
   },
   {
     statusCode: 401,
