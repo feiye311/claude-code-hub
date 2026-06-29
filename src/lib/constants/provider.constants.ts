@@ -28,7 +28,7 @@ export const PROVIDER_KEY_MAX_LENGTH = 1024 * 1024;
 export const PROVIDER_DEFAULTS = {
   IS_ENABLED: true,
   WEIGHT: 1,
-  MAX_RETRY_ATTEMPTS: 2,
+  MAX_RETRY_ATTEMPTS: 3,
 } as const;
 
 export const PROVIDER_GROUP = {
