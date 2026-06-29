@@ -97,7 +97,6 @@ export function ModelTestDialog({
             { role: "user", content: userMessage },
           ],
           stream: true,
-          _provider_id: selectedProvider ? parseInt(selectedProvider) : undefined,
         }),
         signal: abortController.signal,
       });
