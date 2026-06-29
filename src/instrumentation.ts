@@ -490,7 +490,21 @@ export async function register() {
       const { checkDatabaseConnection, runMigrations } = await import("@/lib/migrate");
       const isConnected = await checkDatabaseConnection();
       if (isConnected) {
-        await runMigrations();
+        // 检查 AUTO_MIGRATE 配置
+        const autoMigrateRaw = process.env.AUTO_MIGRATE?.trim().toLowerCase();
+        const autoMigrateDisabled =
+          autoMigrateRaw === "false" ||
+          autoMigrateRaw === "0" ||
+          autoMigrateRaw === "no" ||
+          autoMigrateRaw === "off";
+
+        if (!autoMigrateDisabled) {
+          await runMigrations();
+        } else {
+          logger.info("[Instrumentation] AUTO_MIGRATE disabled: skipping migrations", {
+            value: process.env.AUTO_MIGRATE,
+          });
+        }
 
         // Ledger backfill: fire-and-forget after migration (non-blocking, idempotent)
         import("@/lib/ledger-backfill")
