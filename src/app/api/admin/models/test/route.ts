@@ -112,11 +112,15 @@ export async function POST(request: Request) {
       let errorMessage = "请求失败";
       try {
         const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.error?.message || errorJson.message || errorJson.error || errorMessage;
+        errorMessage =
+          errorJson.error?.message || errorJson.message || errorJson.error || errorMessage;
       } catch {
         errorMessage = errorText.slice(0, 500) || errorMessage;
       }
-      return Response.json({ error: { message: errorMessage } }, { status: upstreamResponse.status });
+      return Response.json(
+        { error: { message: errorMessage } },
+        { status: upstreamResponse.status }
+      );
     }
 
     // 透传 SSE 流

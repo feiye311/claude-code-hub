@@ -82,8 +82,7 @@ function NavDropdown({
             className={cn(
               "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-all",
               "text-muted-foreground hover:text-foreground",
-              anyChildActive &&
-                "bg-primary/5 text-foreground shadow-[0_1px_0_0_rgba(0,0,0,0.03)]"
+              anyChildActive && "bg-primary/5 text-foreground shadow-[0_1px_0_0_rgba(0,0,0,0.03)]"
             )}
           >
             {item.label}

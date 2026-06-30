@@ -39,12 +39,7 @@ interface Message {
   content: string;
 }
 
-export function ModelTestDialog({
-  model,
-  providers,
-  open,
-  onOpenChange,
-}: ModelTestDialogProps) {
+export function ModelTestDialog({ model, providers, open, onOpenChange }: ModelTestDialogProps) {
   const [selectedProvider, setSelectedProvider] = useState<string>(
     providers[0]?.id.toString() || ""
   );
@@ -143,10 +138,7 @@ export function ModelTestDialog({
         }
       }
 
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: accumulated },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", content: accumulated }]);
       setStreamingContent("");
     } catch (error: any) {
       if (error.name !== "AbortError") {
@@ -188,9 +180,7 @@ export function ModelTestDialog({
               {model}
             </code>
           </DialogTitle>
-          <DialogDescription>
-            选择供应商并发送消息测试模型响应
-          </DialogDescription>
+          <DialogDescription>选择供应商并发送消息测试模型响应</DialogDescription>
         </DialogHeader>
 
         {/* 供应商选择 */}
@@ -206,9 +196,7 @@ export function ModelTestDialog({
               {providers.map((p) => (
                 <SelectItem key={p.id} value={p.id.toString()}>
                   {p.name}
-                  <span className="ml-2 text-muted-foreground">
-                    ({p.count} 次调用)
-                  </span>
+                  <span className="ml-2 text-muted-foreground">({p.count} 次调用)</span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -226,15 +214,11 @@ export function ModelTestDialog({
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={`flex ${
-                msg.role === "user" ? "justify-end" : "justify-start"
-              }`}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
                 className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                  msg.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
+                  msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
                 }`}
               >
                 <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -275,19 +259,11 @@ export function ModelTestDialog({
           />
           <div className="flex flex-col gap-1">
             {isLoading ? (
-              <Button
-                variant="destructive"
-                size="icon"
-                onClick={handleStop}
-              >
+              <Button variant="destructive" size="icon" onClick={handleStop}>
                 <StopCircle className="h-4 w-4" />
               </Button>
             ) : (
-              <Button
-                size="icon"
-                onClick={handleSend}
-                disabled={!input.trim()}
-              >
+              <Button size="icon" onClick={handleSend} disabled={!input.trim()}>
                 <Send className="h-4 w-4" />
               </Button>
             )}

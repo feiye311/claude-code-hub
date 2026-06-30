@@ -11,7 +11,9 @@ import { and, count, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
  * 从所有启用的供应商的 allowedModels 中聚合出系统配置的全部模型列表。
  * 仅提取 exact 匹配的规则作为具体模型名（prefix/suffix/regex 等通配规则不产出具体模型名）。
  */
-async function getConfiguredModels(): Promise<Map<string, { providerId: number; providerName: string }[]>> {
+async function getConfiguredModels(): Promise<
+  Map<string, { providerId: number; providerName: string }[]>
+> {
   const allProviders = await db
     .select({
       id: providers.id,
@@ -99,13 +101,16 @@ export async function getModelList(c: Context) {
       .groupBy(messageRequest.model)
       .having(sql`${messageRequest.model} IS NOT NULL`);
 
-    const usageMap = new Map<string, {
-      totalCount: number;
-      successCount: number;
-      errorCount: number;
-      totalInputTokens: number;
-      totalOutputTokens: number;
-    }>();
+    const usageMap = new Map<
+      string,
+      {
+        totalCount: number;
+        successCount: number;
+        errorCount: number;
+        totalInputTokens: number;
+        totalOutputTokens: number;
+      }
+    >();
     for (const s of usageStats) {
       if (s.model) {
         usageMap.set(s.model, {
@@ -157,12 +162,7 @@ export async function getModelList(c: Context) {
         })
         .from(messageRequest)
         .leftJoin(providers, eq(messageRequest.providerId, providers.id))
-        .where(
-          and(
-            baseConditions,
-            inArray(messageRequest.model, pagedModels)
-          )
-        )
+        .where(and(baseConditions, inArray(messageRequest.model, pagedModels)))
         .groupBy(messageRequest.model, messageRequest.providerId, providers.name)
         .orderBy(desc(count()));
 

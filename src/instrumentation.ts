@@ -143,7 +143,7 @@ async function logStartupMarker(): Promise<void> {
   }
   instrumentationState.__CCH_LIFECYCLE_MARKERS_LOGGED__ = true;
   instrumentationState.__CCH_PROCESS_STARTED_AT__ = Date.now();
-  
+
   const { logger } = await import("@/lib/logger");
   logger.info("[Lifecycle] Process started", {
     pid: process.pid,
@@ -166,7 +166,7 @@ async function logStartupMarker(): Promise<void> {
  */
 async function syncErrorRulesAndInitializeDetector(): Promise<void> {
   const { logger } = await import("@/lib/logger");
-  
+
   // 同步默认错误规则到数据库 - 每次启动都完整同步
   const { syncDefaultErrorRules } = await import("@/repository/error-rules");
   const syncResult = await syncDefaultErrorRules();
@@ -242,9 +242,11 @@ async function startApiKeyVacuumFilterSync(): Promise<void> {
 
   try {
     const { logger } = await import("@/lib/logger");
-    const { CHANNEL_API_KEYS_UPDATED, subscribeCacheInvalidation } = await import("@/lib/redis/pubsub");
+    const { CHANNEL_API_KEYS_UPDATED, subscribeCacheInvalidation } = await import(
+      "@/lib/redis/pubsub"
+    );
     const { apiKeyVacuumFilter } = await import("@/lib/security/api-key-vacuum-filter");
-    
+
     const cleanup = await subscribeCacheInvalidation(CHANNEL_API_KEYS_UPDATED, () => {
       apiKeyVacuumFilter.invalidateAndReload({ reason: "api_keys_updated" });
     });
@@ -264,7 +266,7 @@ async function startApiKeyVacuumFilterSync(): Promise<void> {
 async function warmupApiKeyVacuumFilter(): Promise<void> {
   const { logger } = await import("@/lib/logger");
   const { apiKeyVacuumFilter } = await import("@/lib/security/api-key-vacuum-filter");
-  
+
   // 预热 API Key Vacuum Filter（减少无效 key 对 DB 的压力）
   try {
     apiKeyVacuumFilter.startBackgroundReload({ reason: "startup" });
@@ -283,7 +285,7 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     // 动态导入 logger，避免 Edge Runtime 警告
     const { logger } = await import("@/lib/logger");
-    
+
     // 生命周期与崩溃诊断（issue #1147）
     // - startup marker：让运维能从日志中区分 "正常启动" 与 "Docker 异常重启后立即恢复"
     // - crash handlers：兜底 uncaughtException / unhandledRejection，并触发 Node 诊断报告
