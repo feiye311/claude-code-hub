@@ -85,18 +85,18 @@ export function ModelTestDialog({
     abortControllerRef.current = abortController;
 
     try {
-      const response = await fetch("/v1/chat/completions", {
+      const response = await fetch("/api/admin/models/test", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model: model,
+          providerId: selectedProvider ? Number.parseInt(selectedProvider, 10) : undefined,
           messages: [
             ...messages.map((m) => ({ role: m.role, content: m.content })),
             { role: "user", content: userMessage },
           ],
-          stream: true,
         }),
         signal: abortController.signal,
       });
@@ -126,7 +126,12 @@ export function ModelTestDialog({
 
             try {
               const parsed = JSON.parse(data);
-              const content = parsed.choices?.[0]?.delta?.content || "";
+              // OpenAI 格式: choices[0].delta.content
+              let content = parsed.choices?.[0]?.delta?.content || "";
+              // Anthropic 格式: content_block_delta.delta.text
+              if (!content && parsed.type === "content_block_delta") {
+                content = parsed.delta?.text || "";
+              }
               if (content) {
                 accumulated += content;
                 setStreamingContent(accumulated);

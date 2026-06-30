@@ -32,6 +32,8 @@ interface ModelItem {
   totalCount: number;
   successCount: number;
   errorCount: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
   providers: ModelProvider[];
   providerCount: number;
 }
@@ -56,6 +58,13 @@ export function ModelListTable({ models }: ModelListTableProps) {
     return ((item.successCount / item.totalCount) * 100).toFixed(1);
   };
 
+  const formatTokens = (n: number) => {
+    if (n === 0) return "0";
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return String(n);
+  };
+
   if (models.length === 0) {
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground">
@@ -73,6 +82,8 @@ export function ModelListTable({ models }: ModelListTableProps) {
               <TableHead className="min-w-[200px]">模型名称</TableHead>
               <TableHead className="text-right">调用次数</TableHead>
               <TableHead className="text-right">成功率</TableHead>
+              <TableHead className="text-right">输入 Tokens</TableHead>
+              <TableHead className="text-right">输出 Tokens</TableHead>
               <TableHead>供应商</TableHead>
               <TableHead className="text-right w-[140px]">操作</TableHead>
             </TableRow>
@@ -112,17 +123,27 @@ export function ModelListTable({ models }: ModelListTableProps) {
                   {item.totalCount.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Badge
-                    variant={
-                      Number(successRate(item)) >= 95
-                        ? "default"
-                        : Number(successRate(item)) >= 80
-                          ? "secondary"
-                          : "destructive"
-                    }
-                  >
-                    {successRate(item)}%
-                  </Badge>
+                  {item.totalCount === 0 ? (
+                    <Badge variant="outline" className="text-muted-foreground">未使用</Badge>
+                  ) : (
+                    <Badge
+                      variant={
+                        Number(successRate(item)) >= 95
+                          ? "default"
+                          : Number(successRate(item)) >= 80
+                            ? "secondary"
+                            : "destructive"
+                      }
+                    >
+                      {successRate(item)}%
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell className="text-right font-mono text-muted-foreground">
+                  {formatTokens(item.totalInputTokens)}
+                </TableCell>
+                <TableCell className="text-right font-mono text-muted-foreground">
+                  {formatTokens(item.totalOutputTokens)}
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">

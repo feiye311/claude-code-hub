@@ -61,6 +61,8 @@ const ModelListItemSchema = z.object({
   totalCount: z.number(),
   successCount: z.number(),
   errorCount: z.number(),
+  totalInputTokens: z.number(),
+  totalOutputTokens: z.number(),
   providers: z.array(ModelProviderSchema),
   providerCount: z.number(),
 });

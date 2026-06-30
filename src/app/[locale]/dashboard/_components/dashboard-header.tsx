@@ -25,10 +25,20 @@ export async function DashboardHeader({ session, locale }: DashboardHeaderProps)
     { href: "/dashboard/logs", label: t("usageLogs") },
     { href: "/dashboard/leaderboard", label: t("leaderboard") },
     { href: "/dashboard/availability", label: t("availability"), adminOnly: true },
-    { href: "/dashboard/providers", label: t("providers"), adminOnly: true },
-    { href: "/dashboard/models", label: t("models"), adminOnly: true },
     ...(isAdmin
-      ? [{ href: "/dashboard/quotas", label: t("quotasManagement") }]
+      ? [
+          {
+            href: "/dashboard/providers",
+            label: t("management"),
+            type: "dropdown" as const,
+            adminOnly: true,
+            children: [
+              { href: "/dashboard/providers", label: t("providers") },
+              { href: "/dashboard/models", label: t("models") },
+              { href: "/dashboard/quotas", label: t("quotasManagement") },
+            ],
+          },
+        ]
       : [{ href: "/dashboard/my-quota", label: t("myQuota") }]),
     { href: "/dashboard/users", label: t("userManagement") },
     documentationItem,

@@ -17,15 +17,103 @@ import { cn } from "@/lib/utils";
 const OPEN_DELAY_MS = 150;
 const CLOSE_DELAY_MS = 200;
 
+export interface DashboardNavChild {
+  href: string;
+  label: string;
+}
+
 export interface DashboardNavItem {
   href: string;
   label: string;
   external?: boolean;
   type?: "dropdown";
+  children?: DashboardNavChild[];
 }
 
 interface DashboardNavProps {
   items: DashboardNavItem[];
+}
+
+function NavDropdown({
+  item,
+  getIsActive,
+}: {
+  item: DashboardNavItem;
+  getIsActive: (href: string) => boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const openTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (openTimeoutRef.current) clearTimeout(openTimeoutRef.current);
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    };
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    if (openTimeoutRef.current) clearTimeout(openTimeoutRef.current);
+    openTimeoutRef.current = setTimeout(() => setOpen(true), OPEN_DELAY_MS);
+  };
+
+  const handleMouseLeave = () => {
+    if (openTimeoutRef.current) {
+      clearTimeout(openTimeoutRef.current);
+      openTimeoutRef.current = null;
+    }
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    closeTimeoutRef.current = setTimeout(() => setOpen(false), CLOSE_DELAY_MS);
+  };
+
+  const children = item.children ?? [];
+  const anyChildActive = children.some((c) => getIsActive(c.href));
+
+  return (
+    <div onPointerEnter={handleMouseEnter} onPointerLeave={handleMouseLeave}>
+      <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-all",
+              "text-muted-foreground hover:text-foreground",
+              anyChildActive &&
+                "bg-primary/5 text-foreground shadow-[0_1px_0_0_rgba(0,0,0,0.03)]"
+            )}
+          >
+            {item.label}
+            <ChevronDown className="size-3 opacity-50" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          className="w-48"
+          sideOffset={4}
+          onPointerEnter={handleMouseEnter}
+          onPointerLeave={handleMouseLeave}
+        >
+          {children.map((child) => (
+            <DropdownMenuItem key={child.href} asChild>
+              <Link
+                href={child.href}
+                className={cn(
+                  "flex cursor-pointer items-center justify-between",
+                  getIsActive(child.href) && "font-medium text-foreground"
+                )}
+              >
+                {child.label}
+              </Link>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 }
 
 export function DashboardNav({ items }: DashboardNavProps) {
@@ -170,6 +258,14 @@ export function DashboardNav({ items }: DashboardNavProps) {
 
         if (item.href === "/settings") {
           return <div key={item.href}>{renderSettingsDropdown(item, isActive)}</div>;
+        }
+
+        if (item.type === "dropdown" && item.children) {
+          return (
+            <div key={item.href}>
+              <NavDropdown item={item} getIsActive={getIsActive} />
+            </div>
+          );
         }
 
         const className = cn(

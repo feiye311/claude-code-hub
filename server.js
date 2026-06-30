@@ -678,6 +678,14 @@ async function main() {
   const handler = app.getRequestHandler();
   await app.prepare();
 
+  // Next.js owns its own WebSocket upgrades in dev (Turbopack HMR on
+  // /_next/webpack-hmr). Forward non-/v1/responses upgrades to Next instead of
+  // destroying them — otherwise the browser's HMR socket is killed at the TCP
+  // layer (surfacing as ERR_CONNECTION_REFUSED on ws://.../_next/webpack-hmr),
+  // which breaks HMR and client hydration.
+  const nextUpgradeHandler =
+    typeof app.getUpgradeHandler === "function" ? app.getUpgradeHandler() : null;
+
   const server = http.createServer(async (req, res) => {
     try {
       const parsedUrl = parse(req.url, true);
@@ -699,7 +707,21 @@ async function main() {
 
     server.on("upgrade", (req, socket, head) => {
       if (!isResponsesWsUpgrade(req)) {
-        socket.destroy();
+        // Not our /v1/responses WS — let Next.js handle it (HMR, etc.).
+        if (nextUpgradeHandler) {
+          nextUpgradeHandler(req, socket, head).catch((err) => {
+            log("warn", "next_upgrade_handler_error", {
+              error: String(err && err.message ? err.message : err),
+            });
+            try {
+              socket.destroy();
+            } catch {
+              // ignore
+            }
+          });
+        } else {
+          socket.destroy();
+        }
         return;
       }
       wss.handleUpgrade(req, socket, head, (ws) => {
@@ -717,8 +739,24 @@ async function main() {
       });
     });
   } else {
-    server.on("upgrade", (_req, socket) => {
-      socket.destroy();
+    server.on("upgrade", (req, socket, head) => {
+      // `ws` module unavailable: we can't serve /v1/responses WS, but still
+      // delegate to Next so its own upgrades (HMR) keep working.
+      if (nextUpgradeHandler) {
+        nextUpgradeHandler(req, socket, head).catch(() => {
+          try {
+            socket.destroy();
+          } catch {
+            // ignore
+          }
+        });
+      } else {
+        try {
+          socket.destroy();
+        } catch {
+          // ignore
+        }
+      }
     });
   }
 
