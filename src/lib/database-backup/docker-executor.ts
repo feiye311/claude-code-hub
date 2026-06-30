@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createReadStream } from "node:fs";
 import { sql } from "drizzle-orm";
 import { db } from "@/drizzle/db";
@@ -6,6 +6,32 @@ import { logger } from "@/lib/logger";
 import { getDatabaseConfig } from "./db-config";
 
 export type ExportMode = "full" | "excludeLogs" | "ledgerOnly";
+
+/**
+ * Check whether a PostgreSQL CLI tool is available on the host PATH (or via
+ * the configured PG_COMPOSE_EXEC wrapper). Returns true if the tool can be
+ * invoked, false otherwise. Uses a synchronous spawn with --version to avoid
+ * blocking the event loop with a long-running process.
+ */
+export function isPgToolAvailable(tool: "pg_dump" | "pg_restore"): boolean {
+  const composeExec = getDockerComposeExec();
+  try {
+    let result: { error?: Error };
+    if (composeExec) {
+      result = spawnSync(
+        composeExec[0],
+        [...composeExec.slice(1), "exec", "-T", "postgres", tool, "--version"],
+        { encoding: "utf8", timeout: 10_000 }
+      );
+    } else {
+      result = spawnSync(tool, ["--version"], { encoding: "utf8", timeout: 10_000 });
+    }
+    // spawnSync returns { error: ENOENT } when the binary is missing, NOT a throw
+    return !result.error;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Parse PG_COMPOSE_EXEC env var into a command array for docker compose exec.
@@ -95,6 +121,7 @@ export function executePgDump(mode: ExportMode = "full"): ReadableStream<Uint8Ar
 
   return new ReadableStream({
     start(controller) {
+      let streamClosed = false;
       // 监听 stdout (数据输出)
       pgProcess.stdout.on("data", (chunk: Buffer) => {
         controller.enqueue(new Uint8Array(chunk));
@@ -107,6 +134,8 @@ export function executePgDump(mode: ExportMode = "full"): ReadableStream<Uint8Ar
 
       // 进程结束
       pgProcess.on("close", (code: number | null) => {
+        if (streamClosed) return;
+        streamClosed = true;
         if (code === 0) {
           logger.info({
             action: "pg_dump_complete",
@@ -130,7 +159,13 @@ export function executePgDump(mode: ExportMode = "full"): ReadableStream<Uint8Ar
           action: "pg_dump_spawn_error",
           error: err.message,
         });
-        controller.error(err);
+        if (streamClosed) return;
+        streamClosed = true;
+        try {
+          controller.error(err);
+        } catch {
+          // Controller may already be closed by the 'close' event
+        }
       });
     },
 
@@ -291,6 +326,7 @@ export function executePgRestore(
 
   return new ReadableStream({
     start(controller) {
+      let streamClosed = false;
       // 监听 stderr（pg_restore 的进度信息都输出到 stderr）
       pgProcess.stderr.on("data", (chunk: Buffer) => {
         const message = chunk.toString().trim();
@@ -316,6 +352,10 @@ export function executePgRestore(
 
       // 进程结束
       pgProcess.on("close", async (code: number | null) => {
+        // Spawn failures (ENOENT) fire both 'error' and 'close'; if 'error'
+        // already closed the controller, bail out to avoid double-close.
+        if (streamClosed) return;
+        streamClosed = true;
         // 智能错误分析
         const analysis = analyzeRestoreErrors(errorLines);
 
@@ -434,13 +474,19 @@ export function executePgRestore(
           action: "pg_restore_spawn_error",
           error: err.message,
         });
+        if (streamClosed) return;
+        streamClosed = true;
 
         const errorMessage = `data: ${JSON.stringify({
           type: "error",
           message: `执行 pg_restore 失败: ${err.message}`,
         })}\n\n`;
-        controller.enqueue(encoder.encode(errorMessage));
-        controller.close();
+        try {
+          controller.enqueue(encoder.encode(errorMessage));
+          controller.close();
+        } catch {
+          // Controller may already be closed by the 'close' event
+        }
       });
     },
 

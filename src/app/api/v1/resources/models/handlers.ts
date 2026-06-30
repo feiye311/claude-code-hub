@@ -4,10 +4,57 @@ import { messageRequest, providers } from "@/drizzle/schema";
 import { requireAuth } from "@/lib/api/v1/_shared/auth-middleware";
 import { createProblemResponse } from "@/lib/api/v1/_shared/error-envelope";
 import { jsonResponse } from "@/lib/api/v1/_shared/response-helpers";
-import { and, count, desc, eq, gte, ilike, isNull, sql } from "drizzle-orm";
+import { normalizeAllowedModelRules } from "@/lib/allowed-model-rules";
+import { and, count, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 
 /**
- * 获取模型列表（带统计信息）
+ * 从所有启用的供应商的 allowedModels 中聚合出系统配置的全部模型列表。
+ * 仅提取 exact 匹配的规则作为具体模型名（prefix/suffix/regex 等通配规则不产出具体模型名）。
+ */
+async function getConfiguredModels(): Promise<Map<string, { providerId: number; providerName: string }[]>> {
+  const allProviders = await db
+    .select({
+      id: providers.id,
+      name: providers.name,
+      isEnabled: providers.isEnabled,
+      providerType: providers.providerType,
+      allowedModels: providers.allowedModels,
+      groupTag: providers.groupTag,
+    })
+    .from(providers)
+    .where(isNull(providers.deletedAt));
+
+  const modelMap = new Map<string, { providerId: number; providerName: string }[]>();
+
+  for (const p of allProviders) {
+    if (!p.isEnabled) continue;
+
+    const normalized = normalizeAllowedModelRules(p.allowedModels);
+    if (!normalized || normalized.length === 0) {
+      // allowedModels 为 null/空表示该供应商允许所有模型（通配），不产出具体模型名
+      continue;
+    }
+
+    for (const rule of normalized) {
+      if (rule.matchType === "exact" && rule.pattern) {
+        const existing = modelMap.get(rule.pattern);
+        const providerInfo = { providerId: p.id, providerName: p.name };
+        if (existing) {
+          if (!existing.some((e) => e.providerId === p.id)) {
+            existing.push(providerInfo);
+          }
+        } else {
+          modelMap.set(rule.pattern, [providerInfo]);
+        }
+      }
+    }
+  }
+
+  return modelMap;
+}
+
+/**
+ * 获取模型列表（以系统配置的模型为主，附带使用统计）
  */
 export async function getModelList(c: Context) {
   const auth = await requireAuth("read")(c, async () => {});
@@ -24,20 +71,17 @@ export async function getModelList(c: Context) {
   startDate.setDate(startDate.getDate() - days);
 
   try {
-    // 构建基础查询条件
+    // 1. 获取系统配置的全部模型（来自供应商 allowedModels）
+    const configuredModels = await getConfiguredModels();
+
+    // 2. 获取使用统计（按模型名聚合）
     const baseConditions = and(
       isNull(messageRequest.deletedAt),
       isNull(messageRequest.blockedBy),
       gte(messageRequest.createdAt, startDate)
     );
 
-    // 如果有搜索条件，添加模型名称过滤
-    const searchCondition = search
-      ? and(baseConditions, ilike(messageRequest.model, `%${search}%`))
-      : baseConditions;
-
-    // 获取模型列表（按模型名称聚合）
-    const modelStats = await db
+    const usageStats = await db
       .select({
         model: messageRequest.model,
         totalCount: count().as("total_count"),
@@ -47,62 +91,132 @@ export async function getModelList(c: Context) {
         errorCount: count(
           sql`CASE WHEN ${messageRequest.statusCode} >= 400 OR ${messageRequest.statusCode} IS NULL THEN 1 END`
         ).as("error_count"),
+        totalInputTokens: sql<string>`COALESCE(SUM(${messageRequest.inputTokens}), 0)`,
+        totalOutputTokens: sql<string>`COALESCE(SUM(${messageRequest.outputTokens}), 0)`,
       })
       .from(messageRequest)
-      .where(searchCondition)
+      .where(baseConditions)
       .groupBy(messageRequest.model)
-      .having(sql`${messageRequest.model} IS NOT NULL`)
-      .orderBy(desc(count()))
-      .limit(pageSize)
-      .offset((page - 1) * pageSize);
+      .having(sql`${messageRequest.model} IS NOT NULL`);
 
-    // 获取总数
-    const totalResult = await db
-      .select({
-        count: sql<number>`COUNT(DISTINCT ${messageRequest.model})`,
-      })
-      .from(messageRequest)
-      .where(searchCondition);
+    const usageMap = new Map<string, {
+      totalCount: number;
+      successCount: number;
+      errorCount: number;
+      totalInputTokens: number;
+      totalOutputTokens: number;
+    }>();
+    for (const s of usageStats) {
+      if (s.model) {
+        usageMap.set(s.model, {
+          totalCount: Number(s.totalCount),
+          successCount: Number(s.successCount),
+          errorCount: Number(s.errorCount),
+          totalInputTokens: Number(s.totalInputTokens),
+          totalOutputTokens: Number(s.totalOutputTokens),
+        });
+      }
+    }
 
-    const total = totalResult[0]?.count || 0;
+    // 3. 合并：配置的模型为主，未配置但有使用记录的模型也加入
+    const allModelNames = new Set<string>();
+    for (const name of configuredModels.keys()) allModelNames.add(name);
+    for (const name of usageMap.keys()) allModelNames.add(name);
 
-    // 为每个模型获取供应商信息
-    const modelsWithProviders = await Promise.all(
-      modelStats
-        .filter((m) => m.model)
-        .map(async (modelStat) => {
-          // 获取该模型的供应商列表
-          const providerStats = await db
-            .select({
-              providerId: messageRequest.providerId,
-              providerName: providers.name,
-              count: count().as("count"),
-            })
-            .from(messageRequest)
-            .leftJoin(providers, eq(messageRequest.providerId, providers.id))
-            .where(
-              and(
-                baseConditions,
-                eq(messageRequest.model, modelStat.model!)
-              )
-            )
-            .groupBy(messageRequest.providerId, providers.name)
-            .orderBy(desc(count()));
+    // 4. 搜索过滤
+    let filteredModels = Array.from(allModelNames);
+    if (search) {
+      const lowerSearch = search.toLowerCase();
+      filteredModels = filteredModels.filter((m) => m.toLowerCase().includes(lowerSearch));
+    }
 
-          return {
-            model: modelStat.model,
-            totalCount: Number(modelStat.totalCount),
-            successCount: Number(modelStat.successCount),
-            errorCount: Number(modelStat.errorCount),
-            providers: providerStats.map((p) => ({
-              id: p.providerId,
-              name: p.providerName || `Provider #${p.providerId}`,
-              count: Number(p.count),
-            })),
-            providerCount: providerStats.length,
-          };
+    // 5. 排序：先按是否有使用记录降序，再按模型名排序
+    filteredModels.sort((a, b) => {
+      const ua = usageMap.get(a)?.totalCount ?? 0;
+      const ub = usageMap.get(b)?.totalCount ?? 0;
+      if (ub !== ua) return ub - ua;
+      return a.localeCompare(b);
+    });
+
+    const total = filteredModels.length;
+    const pagedModels = filteredModels.slice((page - 1) * pageSize, page * pageSize);
+
+    // 6. 批量获取分页模型的供应商使用统计（单次查询，避免 N+1）
+    const providerStatsByModel = new Map<
+      string,
+      { providerId: number; providerName: string; count: number }[]
+    >();
+
+    if (pagedModels.length > 0) {
+      const allProviderStats = await db
+        .select({
+          model: messageRequest.model,
+          providerId: messageRequest.providerId,
+          providerName: providers.name,
+          count: count().as("count"),
         })
-    );
+        .from(messageRequest)
+        .leftJoin(providers, eq(messageRequest.providerId, providers.id))
+        .where(
+          and(
+            baseConditions,
+            inArray(messageRequest.model, pagedModels)
+          )
+        )
+        .groupBy(messageRequest.model, messageRequest.providerId, providers.name)
+        .orderBy(desc(count()));
+
+      for (const row of allProviderStats) {
+        if (!row.model) continue;
+        const arr = providerStatsByModel.get(row.model) ?? [];
+        arr.push({
+          providerId: row.providerId,
+          providerName: row.providerName || `Provider #${row.providerId}`,
+          count: Number(row.count),
+        });
+        providerStatsByModel.set(row.model, arr);
+      }
+    }
+
+    // 7. 组装最终结果（纯内存操作，无 DB 查询）
+    const modelsWithProviders = pagedModels.map((modelName) => {
+      const configuredProviders = configuredModels.get(modelName) ?? [];
+      const providerStats = providerStatsByModel.get(modelName) ?? [];
+      const usage = usageMap.get(modelName);
+
+      // 合并配置的供应商和使用过的供应商（去重）
+      const providerMap = new Map<number, { id: number; name: string; count: number }>();
+      for (const cp of configuredProviders) {
+        providerMap.set(cp.providerId, {
+          id: cp.providerId,
+          name: cp.providerName,
+          count: 0,
+        });
+      }
+      for (const ps of providerStats) {
+        const existing = providerMap.get(ps.providerId);
+        if (existing) {
+          existing.count = ps.count;
+        } else {
+          providerMap.set(ps.providerId, {
+            id: ps.providerId,
+            name: ps.providerName,
+            count: ps.count,
+          });
+        }
+      }
+
+      return {
+        model: modelName,
+        totalCount: usage?.totalCount ?? 0,
+        successCount: usage?.successCount ?? 0,
+        errorCount: usage?.errorCount ?? 0,
+        totalInputTokens: usage?.totalInputTokens ?? 0,
+        totalOutputTokens: usage?.totalOutputTokens ?? 0,
+        providers: Array.from(providerMap.values()),
+        providerCount: providerMap.size,
+      };
+    });
 
     return jsonResponse({
       data: modelsWithProviders,

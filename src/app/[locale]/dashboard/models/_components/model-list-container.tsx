@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,8 @@ interface ModelItem {
   totalCount: number;
   successCount: number;
   errorCount: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
   providers: ModelProvider[];
   providerCount: number;
 }
@@ -66,6 +68,12 @@ export function ModelListContainer() {
     setPage(1);
   };
 
+  const handleClear = () => {
+    setSearchInput("");
+    setSearch("");
+    setPage(1);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       handleSearch();
@@ -83,8 +91,18 @@ export function ModelListContainer() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="pl-9"
+            className="pl-9 pr-8"
           />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="清除搜索"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         <Button variant="outline" onClick={handleSearch}>
           搜索

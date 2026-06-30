@@ -15,7 +15,7 @@
     "typecheck": "tsgo -p tsconfig.json --noEmit",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "clean:cache": "rm -rf .next tsconfig.tsbuildinfo node_modules/.cache",
+    "clean:cache": "node -e \"for(const p of ['.next','tsconfig.tsbuildinfo','node_modules/.cache']){try{require('node:fs').rmSync(p,{recursive:true,force:true})}catch{}}\"",
     "test": "vitest run",
     "test:ui": "vitest --ui --watch",
     "test:e2e": "vitest run --config tests/configs/e2e.config.ts --reporter=verbose",

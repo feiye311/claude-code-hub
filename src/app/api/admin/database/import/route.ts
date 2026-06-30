@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { getSession } from "@/lib/auth";
 import { acquireBackupLock, releaseBackupLock } from "@/lib/database-backup/backup-lock";
-import { checkDatabaseConnection, executePgRestore } from "@/lib/database-backup/docker-executor";
+import { checkDatabaseConnection, executePgRestore, isPgToolAvailable } from "@/lib/database-backup/docker-executor";
 import {
   cleanupTempFile,
   generateTempFilePath,
@@ -105,6 +105,19 @@ export async function POST(request: Request) {
         });
       }
       return Response.json({ error: "数据库连接不可用，请检查数据库服务状态" }, { status: 503 });
+    }
+
+    // 6.5. 检查 pg_restore 是否可用（避免上传大文件后才报错）
+    if (!isPgToolAvailable("pg_restore")) {
+      logger.error({ action: "database_import_pg_restore_not_found" });
+      if (lockId) {
+        await releaseBackupLock(lockId, "import").catch(() => {});
+      }
+      const hint = "未找到 pg_restore 命令。请安装 PostgreSQL 客户端工具，或通过 PG_COMPOSE_EXEC 环境变量配置 Docker exec 调用。";
+      return Response.json(
+        { error: "pg_restore 不可用", details: hint },
+        { status: 500 }
+      );
     }
 
     logger.info({

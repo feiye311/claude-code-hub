@@ -14,6 +14,8 @@
 
 import { existsSync } from "node:fs";
 import { stat, unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { logger } from "@/lib/logger";
 
 export interface TempFileInfo {
@@ -34,7 +36,7 @@ const activeTempFiles = new Map<string, TempFileInfo>();
 export function generateTempFilePath(purpose: "import" | "export"): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(7);
-  return `/tmp/database_${purpose}_${timestamp}_${random}.dump`;
+  return join(tmpdir(), `database_${purpose}_${timestamp}_${random}.dump`);
 }
 
 /**

@@ -7,6 +7,13 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig: NextConfig = {
   output: "standalone",
 
+  // Allow HMR/WebSocket dev access via 127.0.0.1 (and LAN IPs) in addition to
+  // localhost. Next.js 16's blockCrossSiteDEV only allows `localhost` by
+  // default; accessing the dev server via 127.0.0.1 otherwise makes the HMR
+  // upgrade return 403, which breaks Fast Refresh hydration and leaves
+  // framer-motion components stuck at their `initial` (opacity:0) state.
+  allowedDevOrigins: ["127.0.0.1", "0.0.0.0"],
+
   // 转译 ESM 模块（@lobehub/icons 需要）
   transpilePackages: ["@lobehub/icons"],
 

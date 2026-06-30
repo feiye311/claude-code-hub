@@ -46,6 +46,34 @@ export function MobileNav({ items }: MobileNavProps) {
           {items.map((item) => {
             const isActive = getIsActive(item.href);
 
+            if (item.type === "dropdown" && item.children) {
+              return (
+                <div key={item.href} className="flex flex-col gap-1">
+                  <div className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    {item.label}
+                  </div>
+                  {item.children.map((child) => {
+                    const childActive = getIsActive(child.href);
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          "rounded-lg px-8 py-2.5 text-sm font-medium transition-colors",
+                          childActive
+                            ? "bg-primary/10 text-foreground"
+                            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                        )}
+                      >
+                        {child.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              );
+            }
+
             if (item.external) {
               return (
                 <a
