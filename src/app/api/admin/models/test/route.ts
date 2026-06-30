@@ -1,7 +1,12 @@
-import { eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/drizzle/db";
 import { providers } from "@/drizzle/schema";
 import { getSession } from "@/lib/auth";
+import {
+  getProviderModelRedirectTarget,
+  hasProviderModelRedirectRules,
+  normalizeProviderModelRedirectRules,
+} from "@/lib/provider-model-redirects";
 import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
@@ -11,6 +16,7 @@ export const dynamic = "force-dynamic";
  * POST /api/admin/models/test
  *
  * 模型测试：直接用渠道上游的 key 调用上游 API，不走本地 proxy。
+ * 自动应用供应商的 modelRedirects 将本地模型名映射为上游模型名。
  *
  * Body: { model, messages, providerId }
  * Response: 透传上游 SSE 流
@@ -32,7 +38,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "缺少 model、messages 或 providerId 参数" }, { status: 400 });
   }
 
-  // 获取供应商的 URL 和 key
+  // 获取供应商的 URL、key 和 modelRedirects
   const [provider] = await db
     .select({
       id: providers.id,
@@ -41,6 +47,7 @@ export async function POST(request: Request) {
       key: providers.key,
       providerType: providers.providerType,
       isEnabled: providers.isEnabled,
+      modelRedirects: providers.modelRedirects,
     })
     .from(providers)
     .where(sql`${providers.id} = ${providerId} AND ${providers.deletedAt} IS NULL`)
@@ -54,17 +61,32 @@ export async function POST(request: Request) {
     return Response.json({ error: "该供应商已禁用" }, { status: 400 });
   }
 
+  // 应用 modelRedirects：将本地模型名映射为上游实际模型名
+  const normalizedRedirects = normalizeProviderModelRedirectRules(provider.modelRedirects);
+  const upstreamModel =
+    hasProviderModelRedirectRules(normalizedRedirects)
+      ? getProviderModelRedirectTarget(model, normalizedRedirects)
+      : model;
+
+  if (upstreamModel !== model) {
+    logger.info({
+      action: "model_test_redirect",
+      localModel: model,
+      upstreamModel,
+      providerId,
+      providerName: provider.name,
+    });
+  }
+
   // 构建上游请求
   const providerUrl = provider.url.replace(/\/$/, "");
   const isAnthropic = provider.providerType === "claude" || provider.providerType === "claude-auth";
 
-  // 根据供应商类型选择 API 路径和请求格式
   let upstreamUrl: string;
   let headers: Record<string, string>;
   let requestBody: Record<string, unknown>;
 
   if (isAnthropic) {
-    // Anthropic Messages API
     upstreamUrl = `${providerUrl}/v1/messages`;
     headers = {
       "Content-Type": "application/json",
@@ -72,20 +94,19 @@ export async function POST(request: Request) {
       "anthropic-version": "2023-06-01",
     };
     requestBody = {
-      model,
+      model: upstreamModel,
       max_tokens: 4096,
       messages,
       stream: true,
     };
   } else {
-    // OpenAI Chat Completions API (also works for openai-compatible, codex)
     upstreamUrl = `${providerUrl}/v1/chat/completions`;
     headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${provider.key}`,
     };
     requestBody = {
-      model,
+      model: upstreamModel,
       messages,
       stream: true,
     };
@@ -94,6 +115,7 @@ export async function POST(request: Request) {
   logger.info({
     action: "model_test_direct",
     model,
+    upstreamModel,
     providerId,
     providerName: provider.name,
     upstreamUrl,
@@ -119,7 +141,6 @@ export async function POST(request: Request) {
       return Response.json({ error: { message: errorMessage } }, { status: upstreamResponse.status });
     }
 
-    // 透传 SSE 流
     return new Response(upstreamResponse.body, {
       status: upstreamResponse.status,
       headers: {
