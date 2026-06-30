@@ -1,13 +1,13 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db } from "@/drizzle/db";
 import { providers } from "@/drizzle/schema";
 import { getSession } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 import {
   getProviderModelRedirectTarget,
   hasProviderModelRedirectRules,
   normalizeProviderModelRedirectRules,
 } from "@/lib/provider-model-redirects";
-import { logger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: Request) {
   const session = await getSession();
-  if (!session || session.user.role !== "admin") {
+  if (session?.user.role !== "admin") {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -63,10 +63,9 @@ export async function POST(request: Request) {
 
   // 应用 modelRedirects：将本地模型名映射为上游实际模型名
   const normalizedRedirects = normalizeProviderModelRedirectRules(provider.modelRedirects);
-  const upstreamModel =
-    hasProviderModelRedirectRules(normalizedRedirects)
-      ? getProviderModelRedirectTarget(model, normalizedRedirects)
-      : model;
+  const upstreamModel = hasProviderModelRedirectRules(normalizedRedirects)
+    ? getProviderModelRedirectTarget(model, normalizedRedirects)
+    : model;
 
   if (upstreamModel !== model) {
     logger.info({
@@ -134,11 +133,15 @@ export async function POST(request: Request) {
       let errorMessage = "请求失败";
       try {
         const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.error?.message || errorJson.message || errorJson.error || errorMessage;
+        errorMessage =
+          errorJson.error?.message || errorJson.message || errorJson.error || errorMessage;
       } catch {
         errorMessage = errorText.slice(0, 500) || errorMessage;
       }
-      return Response.json({ error: { message: errorMessage } }, { status: upstreamResponse.status });
+      return Response.json(
+        { error: { message: errorMessage } },
+        { status: upstreamResponse.status }
+      );
     }
 
     return new Response(upstreamResponse.body, {
