@@ -95,12 +95,13 @@ export function ModelDetailDialog({
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">成功率</p>
-                  <p className="text-2xl font-bold">
-                    {data.overview.totalCount > 0
-                      ? ((data.overview.successCount / data.overview.totalCount) * 100).toFixed(1)
-                      : 0}
-                    %
-                  </p>
+                  {data.overview.totalCount > 0 ? (
+                    <p className="text-2xl font-bold">
+                      {((data.overview.successCount / data.overview.totalCount) * 100).toFixed(1)}%
+                    </p>
+                  ) : (
+                    <p className="text-2xl font-bold text-muted-foreground">未使用</p>
+                  )}
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">平均耗时</p>

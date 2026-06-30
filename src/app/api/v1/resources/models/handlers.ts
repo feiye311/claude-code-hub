@@ -118,13 +118,11 @@ export async function getModelList(c: Context) {
       }
     }
 
-    // 3. 合并：配置的模型为主，未配置但有使用记录的模型也加入
-    const allModelNames = new Set<string>();
-    for (const name of configuredModels.keys()) allModelNames.add(name);
-    for (const name of usageMap.keys()) allModelNames.add(name);
+    // 3. 仅显示配置的模型（不合并使用记录中未配置的上游模型 ID）
+    const allModelNames = Array.from(configuredModels.keys());
 
     // 4. 搜索过滤
-    let filteredModels = Array.from(allModelNames);
+    let filteredModels = allModelNames;
     if (search) {
       const lowerSearch = search.toLowerCase();
       filteredModels = filteredModels.filter((m) => m.toLowerCase().includes(lowerSearch));
