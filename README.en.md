@@ -108,6 +108,10 @@ Register now via <a href="https://pateway.ai/?ch=1ycdoum&aff=T8FV5H42">this link
 - 💰 **Price sheet management**: Paginated SQL queries with debounce search and LiteLLM sync keep thousands of model prices searchable in milliseconds.
 - 🔁 **Session management**: Five-minute context cache preserves decision trails, reduces vendor switches, and maintains full auditability.
 - 🔄 **OpenAI-compatible endpoint**: Supports `/v1/chat/completions` (OpenAI-compatible format), passes through tool calls and reasoning fields, enforces strict same-format routing with no cross-format conversion.
+- 🧪 **Model management**: Visual display of all configured models across providers with usage statistics (calls, success rate, token usage), model detail view, and one-click upstream API testing with automatic modelRedirects mapping.
+- 🗄️ **Database backup & restore**: Web UI for one-click PostgreSQL dump import/export with automatic migration sync.
+- 🌐 **Multi-language support**: Chinese (Simplified/Traditional), English, Russian, Japanese — auto-detects browser language preference.
+- 🔍 **Usage log export**: CSV/XLSX export with virtual-scrolling large tables and billing/actual model mismatch filtering.
 
 ## ⚡️ Quick Start
 

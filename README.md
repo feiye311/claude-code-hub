@@ -108,6 +108,10 @@ AIGoCode 为 CCH 的用户提供了特别福利，通过此链接注册的用户
 - 💰 **价格表管理**：分页查询 + SQL 优化，支持搜索防抖、LiteLLM 同步，千级模型也能快速检索。
 - 🔁 **Session 管理**：5 分钟上下文缓存，记录决策链，避免频繁切换供应商并保留全链路审计。
 - 🔄 **OpenAI 兼容端点**：支持 `/v1/chat/completions`（OpenAI 兼容格式），工具调用与 reasoning 字段透传，严格同格式路由，无跨格式转换。
+- 🧪 **模型管理**：可视化展示所有供应商配置的模型列表，支持使用统计（调用次数、成功率、Token 用量），模型详情与一键测试（直接调用上游 API）。
+- 🗄️ **数据库备份与恢复**：Web UI 一键导入/导出 PostgreSQL 备份文件，支持自动迁移同步。
+- 🌐 **多语言支持**：中文（简/繁）、英语、俄语、日语五种语言，自动检测浏览器语言偏好。
+- 🔍 **用量日志导出**：支持 CSV/XLSX 导出，含虚拟滚动大表、按模型不匹配筛选。
 
 ## ⚡️ 快速开始 Quick Start
 
@@ -229,6 +233,8 @@ Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
 | 供应商管理 | ![Provider Management](public/readme/供应商管理.png) | 为每个供应商配置权重、成本系数、并发限制、代理及模型重定向，实现精细调度。        |
 | 日志与审计 | ![Logs](public/readme/日志.png)                      | 统一查询请求日志，支持时间/用户/供应商/模型筛选，查看 Token、成本与缓冲命中情况。 |
 | 排行榜     | ![Leaderboard](public/readme/排行榜.png)             | 按用户统计请求数、Token 与成本，用于费用分摊与用量治理。                          |
+| 模型管理   | -                                                    | 查看所有供应商配置的模型，含使用统计（调用次数/成功率/Token），支持模型测试。     |
+| 数据导入   | -                                                    | 数据库备份 Web UI 一键导入/导出，支持 PostgreSQL dump 格式自动迁移。              |
 
 ## 🏗️ 架构说明 Architecture
 
@@ -257,7 +263,19 @@ Hono + Proxy Pipeline (认证 → Session 分配 → 限流 → 供应商选择 
 3. **限流**：`RateLimitService` 使用 Lua 脚本原子写入 RPM/金额/并发指标，Redis 不可用则 Fail-Open 降级。
 4. **调度**：`ProviderResolver` 根据权重、优先级、熔断状态与 Session 复用策略选择最佳供应商，至多 3 次重试。
 5. **转发与响应处理**：`ProxyForwarder` 负责上游请求转发，`ProxyResponseHandler` 处理响应流并保留端点原生格式，支持代理与模型重定向。
-6. **监控**：日志、排行榜、价格表等 UI 通过 `repository` 查询 PostgreSQL，以小时级聚合呈现指标。
+6. **监控**：日志、排行榜、价格表、模型管理等 UI 通过 `repository` 查询 PostgreSQL，以小时级聚合呈现指标。
+7. **模型管理**：从供应商 `allowedModels` 配置聚合模型列表，关联使用统计（调用次数/成功率/Token），支持直接调用上游 API 测试。
+
+### 本地开发开发环境
+
+1. 进入 `dev/` 目录：`cd dev`
+2. `make dev` 一键启动 PostgreSQL + Redis + bun dev
+3. 常用命令：
+   - `make db`：仅启动数据库与 Redis
+   - `make logs` / `make logs-app`：快速查看服务日志
+   - `make clean` / `make reset`：清理或重置环境
+4. 推荐使用 `make migrate`、`make db-shell` 处理数据库变更。
+5. 本地开发需安装 PostgreSQL 客户端工具（`pg_restore`/`pg_dump`）用于数据库导入导出功能。
 
 ## 🚢 部署指南 Deployment
 
@@ -366,6 +384,7 @@ cch doctor            # 诊断集群与部署状态
 | `APP_PORT`                                 | `23000`                  | 生产端口，可被容器或进程管理器覆盖。                                         |
 | `APP_URL`                                  | 空                       | 设置后 OpenAPI 文档 `servers` 将展示正确域名/端口。                          |
 | `API_TEST_TIMEOUT_MS`                      | `15000`                  | 供应商 API 测试超时时间（毫秒，范围 5000-120000），跨境网络可适当提高。      |
+| `PG_COMPOSE_EXEC`                         | 空                       | 设置后数据库导入导出通过 Docker Compose 执行 pg_restore/pg_dump，无需本地安装。 |
 
 > 布尔变量支持 `true/false` 或 `1/0`；在 `.env` 文件里写成带引号形式也没问题（dotenv 会解析并去掉引号）。更多字段参考 `.env.example`。
 
@@ -382,13 +401,22 @@ cch doctor            # 诊断集群与部署状态
    - 查看日志中的 `[CircuitBreaker]` 记录，确认是否由于 4xx/5xx 或网络错误导致。
    - 在管理后台检查供应商健康状态，等待 30 分钟或重启应用重置状态。
 
-4. **提示“无可用供应商”该怎么办？**
+4. **提示"无可用供应商"该怎么办？**
    - 检查供应商是否启用、权重/优先级设置合理，以及是否达到并发/金额限制。
    - 查看决策链日志，确认是否被熔断或代理失败导致。
 
 5. **代理配置失败？**
-   - 确认 URL 含协议前缀（`http://`、`socks5://` 等），并使用后台“测试连接”按钮验证。
+   - 确认 URL 含协议前缀（`http://`、`socks5://` 等），并使用后台"测试连接"按钮验证。
    - 若启用降级策略（`proxy_fallback_to_direct`），请在日志中确认是否已自动切换至直连。
+
+6. **模型管理页面显示"未使用"？**
+   - 这是正常行为。模型列表来自供应商的 `allowedModels` 配置，"未使用"表示该模型尚未有调用记录。
+   - 模型测试可直接调用上游 API（自动应用 modelRedirects 重映射），无需走本地 proxy。
+
+7. **Windows 开发环境无法导入数据库备份？**
+   - 需安装 PostgreSQL 客户端工具（pg_restore）。下载 [PostgreSQL](https://www.postgresql.org/download/windows/) 安装包，仅勾选 Command Line Tools。
+   - 或使用 Docker：在 `.env.local` 设置 `PG_COMPOSE_EXEC=docker compose exec`。
+   - 安装后确认 `pg_restore --version` 能输出版本号（可能需重启终端）。
 
 ## 🤝 贡献指南 Contributing
 
