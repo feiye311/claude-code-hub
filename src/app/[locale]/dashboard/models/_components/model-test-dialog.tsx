@@ -97,7 +97,7 @@ export function ModelTestDialog({ model, providers, open, onOpenChange }: ModelT
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error?.message || "请求失败");
+        throw new Error(error.error?.message || error.error || "请求失败");
       }
 
       const reader = response.body?.getReader();

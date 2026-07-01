@@ -1,11 +1,11 @@
+import { and, count, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { db } from "@/drizzle/db";
 import { messageRequest, providers } from "@/drizzle/schema";
+import { matchesAllowedModelRules, normalizeAllowedModelRules } from "@/lib/allowed-model-rules";
 import { requireAuth } from "@/lib/api/v1/_shared/auth-middleware";
 import { createProblemResponse } from "@/lib/api/v1/_shared/error-envelope";
 import { jsonResponse } from "@/lib/api/v1/_shared/response-helpers";
-import { normalizeAllowedModelRules } from "@/lib/allowed-model-rules";
-import { and, count, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 
 /**
  * 从所有启用的供应商的 allowedModels 中聚合出系统配置的全部模型列表。
@@ -318,6 +318,44 @@ export async function getModelDetail(c: Context) {
 
     const overview = modelOverview[0];
 
+    // 如果没有使用记录，从供应商配置中补充供应商信息
+    let providersList = providerStats.map((p) => ({
+      id: p.providerId,
+      name: p.providerName || `Provider #${p.providerId}`,
+      type: p.providerType,
+      count: Number(p.count),
+      successCount: Number(p.successCount),
+      avgDuration: p.avgDuration ? Math.round(Number(p.avgDuration)) : null,
+      totalCost: p.totalCost || "0",
+    }));
+
+    if (providersList.length === 0) {
+      // 无使用记录 — 从 allowedModels 配置中查找哪些供应商配置了这个模型
+      const allProviders = await db
+        .select({
+          id: providers.id,
+          name: providers.name,
+          providerType: providers.providerType,
+          allowedModels: providers.allowedModels,
+        })
+        .from(providers)
+        .where(and(isNull(providers.deletedAt), eq(providers.isEnabled, true)));
+
+      for (const p of allProviders) {
+        if (matchesAllowedModelRules(modelName, p.allowedModels)) {
+          providersList.push({
+            id: p.id,
+            name: p.name,
+            type: p.providerType,
+            count: 0,
+            successCount: 0,
+            avgDuration: null,
+            totalCost: "0",
+          });
+        }
+      }
+    }
+
     return jsonResponse({
       model: modelName,
       overview: {
@@ -329,15 +367,7 @@ export async function getModelDetail(c: Context) {
         totalInputTokens: overview?.totalInputTokens || "0",
         totalOutputTokens: overview?.totalOutputTokens || "0",
       },
-      providers: providerStats.map((p) => ({
-        id: p.providerId,
-        name: p.providerName || `Provider #${p.providerId}`,
-        type: p.providerType,
-        count: Number(p.count),
-        successCount: Number(p.successCount),
-        avgDuration: p.avgDuration ? Math.round(Number(p.avgDuration)) : null,
-        totalCost: p.totalCost || "0",
-      })),
+      providers: providersList,
       dailyTrend: dailyTrend.map((d) => ({
         date: d.date,
         count: Number(d.count),
