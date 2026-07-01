@@ -12,12 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ModelDetailDialog } from "./model-detail-dialog";
 import { ModelTestDialog } from "./model-test-dialog";
 
@@ -124,7 +119,9 @@ export function ModelListTable({ models }: ModelListTableProps) {
                 </TableCell>
                 <TableCell className="text-right">
                   {item.totalCount === 0 ? (
-                    <Badge variant="outline" className="text-muted-foreground">未使用</Badge>
+                    <Badge variant="outline" className="text-muted-foreground">
+                      未使用
+                    </Badge>
                   ) : (
                     <Badge
                       variant={
@@ -150,9 +147,7 @@ export function ModelListTable({ models }: ModelListTableProps) {
                     {item.providers.slice(0, 3).map((p) => (
                       <Badge key={p.id} variant="outline" className="text-xs">
                         {p.name}
-                        <span className="ml-1 text-muted-foreground">
-                          ({p.count})
-                        </span>
+                        <span className="ml-1 text-muted-foreground">({p.count})</span>
                       </Badge>
                     ))}
                     {item.providers.length > 3 && (
@@ -164,18 +159,10 @@ export function ModelListTable({ models }: ModelListTableProps) {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedModel(item)}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedModel(item)}>
                       详情
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setTestModel(item)}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => setTestModel(item)}>
                       <MessageSquare className="h-4 w-4 mr-1" />
                       测试
                     </Button>

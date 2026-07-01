@@ -17,5 +17,4 @@
 // `src/proxy.ts` — Next.js requires `config.matcher` entries to be string
 // literals so its build-time static analyzer can collect them. The unit
 // test in `tests/unit/proxy-matcher.test.ts` enforces drift between the two.
-export const proxyMatcherPattern =
-  "/((?!api|v1(?:/|$)|v1beta(?:/|$)|_next|favicon.ico).*)";
+export const proxyMatcherPattern = "/((?!api|v1(?:/|$)|v1beta(?:/|$)|_next|favicon.ico).*)";

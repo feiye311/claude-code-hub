@@ -46,11 +46,7 @@ interface ModelDetailResponse {
   days: number;
 }
 
-export function ModelDetailDialog({
-  model,
-  open,
-  onOpenChange,
-}: ModelDetailDialogProps) {
+export function ModelDetailDialog({ model, open, onOpenChange }: ModelDetailDialogProps) {
   const { data, isLoading } = useQuery<ModelDetailResponse>({
     queryKey: ["model-detail", model],
     queryFn: async () => {
@@ -89,9 +85,7 @@ export function ModelDetailDialog({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">总调用</p>
-                  <p className="text-2xl font-bold">
-                    {data.overview.totalCount.toLocaleString()}
-                  </p>
+                  <p className="text-2xl font-bold">{data.overview.totalCount.toLocaleString()}</p>
                 </div>
                 <div className="rounded-lg border p-3">
                   <p className="text-xs text-muted-foreground">成功率</p>
@@ -164,7 +158,8 @@ export function ModelDetailDialog({
                         <div>
                           <p className="font-medium">{provider.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {provider.type} · 调用 {provider.count.toLocaleString()} 次 · 占比 {percentage}%
+                            {provider.type} · 调用 {provider.count.toLocaleString()} 次 · 占比{" "}
+                            {percentage}%
                           </p>
                         </div>
                       </div>

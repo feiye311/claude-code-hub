@@ -107,7 +107,13 @@ export function ModelListContainer() {
         <Button variant="outline" onClick={handleSearch}>
           搜索
         </Button>
-        <Select value={days} onValueChange={(value) => { setDays(value); setPage(1); }}>
+        <Select
+          value={days}
+          onValueChange={(value) => {
+            setDays(value);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="统计周期" />
           </SelectTrigger>
@@ -138,12 +144,10 @@ export function ModelListContainer() {
       {data && (
         <>
           <ModelListTable models={data.data} />
-          
+
           {/* 分页 */}
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              共 {data.total} 个模型
-            </p>
+            <p className="text-sm text-muted-foreground">共 {data.total} 个模型</p>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -153,9 +157,7 @@ export function ModelListContainer() {
               >
                 上一页
               </Button>
-              <span className="text-sm">
-                第 {data.page} 页
-              </span>
+              <span className="text-sm">第 {data.page} 页</span>
               <Button
                 variant="outline"
                 size="sm"

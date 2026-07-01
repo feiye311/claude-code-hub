@@ -1,7 +1,11 @@
 import { writeFile } from "node:fs/promises";
 import { getSession } from "@/lib/auth";
 import { acquireBackupLock, releaseBackupLock } from "@/lib/database-backup/backup-lock";
-import { checkDatabaseConnection, executePgRestore, isPgToolAvailable } from "@/lib/database-backup/docker-executor";
+import {
+  checkDatabaseConnection,
+  executePgRestore,
+  isPgToolAvailable,
+} from "@/lib/database-backup/docker-executor";
 import {
   cleanupTempFile,
   generateTempFilePath,
@@ -113,11 +117,9 @@ export async function POST(request: Request) {
       if (lockId) {
         await releaseBackupLock(lockId, "import").catch(() => {});
       }
-      const hint = "未找到 pg_restore 命令。请安装 PostgreSQL 客户端工具，或通过 PG_COMPOSE_EXEC 环境变量配置 Docker exec 调用。";
-      return Response.json(
-        { error: "pg_restore 不可用", details: hint },
-        { status: 500 }
-      );
+      const hint =
+        "未找到 pg_restore 命令。请安装 PostgreSQL 客户端工具，或通过 PG_COMPOSE_EXEC 环境变量配置 Docker exec 调用。";
+      return Response.json({ error: "pg_restore 不可用", details: hint }, { status: 500 });
     }
 
     logger.info({

@@ -137,7 +137,8 @@ modelsRouter.openapi(
     middleware: requireAuth("read"),
     tags: ["Models"],
     summary: "Get model detail with provider statistics",
-    description: "Returns detailed statistics for a specific model including provider breakdown and daily trend.",
+    description:
+      "Returns detailed statistics for a specific model including provider breakdown and daily trend.",
     "x-required-access": "read",
     security,
     request: {
