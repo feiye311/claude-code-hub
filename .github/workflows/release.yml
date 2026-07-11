@@ -1,9 +1,6 @@
-name: Auto Release Pipeline
+name: Release Pipeline
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       version_type:
@@ -31,10 +28,6 @@ jobs:
   release-pipeline:
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    # 跳过由GitHub Actions创建的提交,避免死循环 (仅对push事件生效)
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.pusher.name != 'github-actions[bot]' && !contains(github.event.head_commit.message, '[skip ci]'))
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
