@@ -49,6 +49,7 @@ const ModelProviderSchema = z.object({
   id: z.number(),
   name: z.string(),
   type: z.string().optional(),
+  isEnabled: z.boolean().optional(),
   count: z.number(),
   successCount: z.number().optional(),
   avgDuration: z.number().nullable().optional(),

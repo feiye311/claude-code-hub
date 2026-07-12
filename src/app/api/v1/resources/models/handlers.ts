@@ -12,7 +12,7 @@ import { jsonResponse } from "@/lib/api/v1/_shared/response-helpers";
  * 仅提取 exact 匹配的规则作为具体模型名（prefix/suffix/regex 等通配规则不产出具体模型名）。
  */
 async function getConfiguredModels(): Promise<
-  Map<string, { providerId: number; providerName: string }[]>
+  Map<string, { providerId: number; providerName: string; isEnabled: boolean }[]>
 > {
   const allProviders = await db
     .select({
@@ -26,21 +26,26 @@ async function getConfiguredModels(): Promise<
     .from(providers)
     .where(isNull(providers.deletedAt));
 
-  const modelMap = new Map<string, { providerId: number; providerName: string }[]>();
+  const modelMap = new Map<
+    string,
+    { providerId: number; providerName: string; isEnabled: boolean }[]
+  >();
 
   for (const p of allProviders) {
-    if (!p.isEnabled) continue;
-
+    // 包含禁用的供应商（前端会标识禁用状态），但跳过未配置 allowedModels 的通配供应商
     const normalized = normalizeAllowedModelRules(p.allowedModels);
     if (!normalized || normalized.length === 0) {
-      // allowedModels 为 null/空表示该供应商允许所有模型（通配），不产出具体模型名
       continue;
     }
 
     for (const rule of normalized) {
       if (rule.matchType === "exact" && rule.pattern) {
         const existing = modelMap.get(rule.pattern);
-        const providerInfo = { providerId: p.id, providerName: p.name };
+        const providerInfo = {
+          providerId: p.id,
+          providerName: p.name,
+          isEnabled: p.isEnabled,
+        };
         if (existing) {
           if (!existing.some((e) => e.providerId === p.id)) {
             existing.push(providerInfo);
@@ -159,7 +164,7 @@ export async function getModelList(c: Context) {
           count: count().as("count"),
         })
         .from(messageRequest)
-        .leftJoin(providers, eq(messageRequest.providerId, providers.id))
+        .innerJoin(providers, eq(messageRequest.providerId, providers.id))
         .where(and(baseConditions, inArray(messageRequest.model, pagedModels)))
         .groupBy(messageRequest.model, messageRequest.providerId, providers.name)
         .orderBy(desc(count()));
@@ -183,12 +188,16 @@ export async function getModelList(c: Context) {
       const usage = usageMap.get(modelName);
 
       // 合并配置的供应商和使用过的供应商（去重）
-      const providerMap = new Map<number, { id: number; name: string; count: number }>();
+      const providerMap = new Map<
+        number,
+        { id: number; name: string; count: number; isEnabled: boolean }
+      >();
       for (const cp of configuredProviders) {
         providerMap.set(cp.providerId, {
           id: cp.providerId,
           name: cp.providerName,
           count: 0,
+          isEnabled: cp.isEnabled,
         });
       }
       for (const ps of providerStats) {
@@ -200,6 +209,7 @@ export async function getModelList(c: Context) {
             id: ps.providerId,
             name: ps.providerName,
             count: ps.count,
+            isEnabled: true, // 使用统计中存在的供应商必然存在且当时可用
           });
         }
       }
@@ -289,6 +299,7 @@ export async function getModelDetail(c: Context) {
         providerId: messageRequest.providerId,
         providerName: providers.name,
         providerType: providers.providerType,
+        providerIsEnabled: providers.isEnabled,
         count: count().as("count"),
         successCount: count(
           sql`CASE WHEN ${messageRequest.statusCode} >= 200 AND ${messageRequest.statusCode} < 300 THEN 1 END`
@@ -297,9 +308,14 @@ export async function getModelDetail(c: Context) {
         totalCost: sql<string>`SUM(${messageRequest.costUsd})`,
       })
       .from(messageRequest)
-      .leftJoin(providers, eq(messageRequest.providerId, providers.id))
+      .innerJoin(providers, eq(messageRequest.providerId, providers.id))
       .where(baseConditions)
-      .groupBy(messageRequest.providerId, providers.name, providers.providerType)
+      .groupBy(
+        messageRequest.providerId,
+        providers.name,
+        providers.providerType,
+        providers.isEnabled
+      )
       .orderBy(desc(count()));
 
     // 获取每日使用趋势
@@ -323,6 +339,7 @@ export async function getModelDetail(c: Context) {
       id: p.providerId,
       name: p.providerName || `Provider #${p.providerId}`,
       type: p.providerType,
+      isEnabled: p.providerIsEnabled,
       count: Number(p.count),
       successCount: Number(p.successCount),
       avgDuration: p.avgDuration ? Math.round(Number(p.avgDuration)) : null,
@@ -330,16 +347,17 @@ export async function getModelDetail(c: Context) {
     }));
 
     if (providersList.length === 0) {
-      // 无使用记录 — 从 allowedModels 配置中查找哪些供应商配置了这个模型
+      // 无使用记录 - 从 allowedModels 配置中查找哪些供应商配置了这个模型
       const allProviders = await db
         .select({
           id: providers.id,
           name: providers.name,
           providerType: providers.providerType,
+          isEnabled: providers.isEnabled,
           allowedModels: providers.allowedModels,
         })
         .from(providers)
-        .where(and(isNull(providers.deletedAt), eq(providers.isEnabled, true)));
+        .where(isNull(providers.deletedAt));
 
       for (const p of allProviders) {
         if (matchesAllowedModelRules(modelName, p.allowedModels)) {
@@ -347,6 +365,7 @@ export async function getModelDetail(c: Context) {
             id: p.id,
             name: p.name,
             type: p.providerType,
+            isEnabled: p.isEnabled,
             count: 0,
             successCount: 0,
             avgDuration: null,

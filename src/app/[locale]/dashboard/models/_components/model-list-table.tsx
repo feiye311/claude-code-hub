@@ -20,6 +20,7 @@ interface ModelProvider {
   id: number;
   name: string;
   count: number;
+  isEnabled?: boolean;
 }
 
 interface ModelItem {
@@ -145,9 +146,16 @@ export function ModelListTable({ models }: ModelListTableProps) {
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {item.providers.slice(0, 3).map((p) => (
-                      <Badge key={p.id} variant="outline" className="text-xs">
+                      <Badge
+                        key={p.id}
+                        variant="outline"
+                        className={`text-xs ${p.isEnabled === false ? "opacity-50 line-through" : ""}`}
+                      >
                         {p.name}
                         <span className="ml-1 text-muted-foreground">({p.count})</span>
+                        {p.isEnabled === false && (
+                          <span className="ml-1 text-orange-500">禁用</span>
+                        )}
                       </Badge>
                     ))}
                     {item.providers.length > 3 && (

@@ -24,6 +24,7 @@ interface ModelProvider {
   id: number;
   name: string;
   count: number;
+  isEnabled?: boolean;
 }
 
 interface ModelTestDialogProps {
@@ -196,6 +197,9 @@ export function ModelTestDialog({ model, providers, open, onOpenChange }: ModelT
                 <SelectItem key={p.id} value={p.id.toString()}>
                   {p.name}
                   <span className="ml-2 text-muted-foreground">({p.count} 次调用)</span>
+                  {p.isEnabled === false && (
+                    <span className="ml-1 text-orange-500">禁用</span>
+                  )}
                 </SelectItem>
               ))}
             </SelectContent>

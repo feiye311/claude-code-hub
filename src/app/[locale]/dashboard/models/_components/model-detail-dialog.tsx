@@ -33,6 +33,7 @@ interface ModelDetailResponse {
     id: number;
     name: string;
     type: string;
+    isEnabled?: boolean;
     count: number;
     successCount: number;
     avgDuration: number | null;
@@ -152,11 +153,18 @@ export function ModelDetailDialog({ model, open, onOpenChange }: ModelDetailDial
                   return (
                     <div
                       key={provider.id}
-                      className="flex items-center justify-between rounded-lg border p-3"
+                      className={`flex items-center justify-between rounded-lg border p-3 ${provider.isEnabled === false ? "opacity-60" : ""}`}
                     >
                       <div className="flex items-center gap-3">
                         <div>
-                          <p className="font-medium">{provider.name}</p>
+                          <p className="flex items-center gap-2 font-medium">
+                            {provider.name}
+                            {provider.isEnabled === false && (
+                              <span className="rounded bg-orange-100 px-1.5 py-0.5 text-xs text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
+                                禁用
+                              </span>
+                            )}
+                          </p>
                           <p className="text-xs text-muted-foreground">
                             {provider.type} · 调用 {provider.count.toLocaleString()} 次 · 占比{" "}
                             {percentage}%
