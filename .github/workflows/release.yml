@@ -97,17 +97,14 @@ jobs:
           fi
 
       - name: Get current version
-        if: github.event.inputs.docker_only != 'true' && (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch')
         id: get_version
         run: |
-          # 以 VERSION 文件作为版本号的主要来源
           FILE_VERSION=$(cat VERSION 2>/dev/null | tr -d '[:space:]' || echo "")
 
           if [ -n "$FILE_VERSION" ]; then
             VERSION="$FILE_VERSION"
             echo "Using VERSION file: $VERSION"
           else
-            # VERSION 文件不存在时,回退到最新 tag
             LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
             VERSION=${LATEST_TAG#v}
             echo "VERSION file not found, using tag: $VERSION"
@@ -116,16 +113,12 @@ jobs:
           echo "Current version: $VERSION"
           echo "current_version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Set version for docker-only build
-        if: github.event.inputs.docker_only == 'true'
-        id: get_version
-        run: |
-          FILE_VERSION=$(cat VERSION 2>/dev/null | tr -d '[:space:]' || echo "0.0.0")
-          # docker-only 模式: 直接用当前 VERSION,不递增
-          echo "current_version=$FILE_VERSION" >> $GITHUB_OUTPUT
-          echo "new_version=$FILE_VERSION" >> $GITHUB_OUTPUT
-          echo "new_tag=v$FILE_VERSION" >> $GITHUB_OUTPUT
-          echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          # docker_only 模式: 直接用当前版本,不递增
+          if [ "${{ github.event.inputs.docker_only }}" = "true" ]; then
+            echo "new_version=$VERSION" >> $GITHUB_OUTPUT
+            echo "new_tag=v$VERSION" >> $GITHUB_OUTPUT
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Calculate next version
         if: github.event.inputs.docker_only != 'true' && (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch')
