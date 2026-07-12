@@ -130,17 +130,34 @@ export async function POST(request: Request) {
 
     if (!upstreamResponse.ok || !upstreamResponse.body) {
       const errorText = await upstreamResponse.text();
-      let errorMessage = "请求失败";
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage =
-          errorJson.error?.message || errorJson.message || errorJson.error || errorMessage;
-      } catch {
-        errorMessage = errorText.slice(0, 500) || errorMessage;
+      const upstreamStatus = upstreamResponse.status;
+
+      logger.warn({
+        action: "model_test_upstream_error",
+        model,
+        upstreamModel,
+        providerId,
+        providerName: provider.name,
+        upstreamUrl,
+        upstreamStatus,
+        upstreamBody: errorText.slice(0, 500),
+      });
+
+      let errorMessage = `上游返回错误 (HTTP ${upstreamStatus})`;
+      if (errorText) {
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage =
+            errorJson.error?.message || errorJson.message || errorJson.error || errorMessage;
+        } catch {
+          // 非 JSON 响应,截取前 500 字符作为错误信息
+          errorMessage = errorText.slice(0, 500) || errorMessage;
+        }
       }
+
       return Response.json(
         { error: { message: errorMessage } },
-        { status: upstreamResponse.status }
+        { status: upstreamStatus }
       );
     }
 
