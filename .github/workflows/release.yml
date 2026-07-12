@@ -412,11 +412,11 @@ jobs:
           build-args: |
             APP_VERSION=${{ steps.next_version.outputs.new_version }}
           tags: |
-            ${{ steps.image_names.outputs.ghcr_image }}:${{ steps.next_version.outputs.new_tag }}
-            ${{ steps.next_version.outputs.is_prerelease != 'true' && format('{0}:{1}', steps.image_names.outputs.ghcr_image, steps.image_names.outputs.floating_tag) || '' }}
-            ${{ steps.image_names.outputs.ghcr_image }}:${{ steps.next_version.outputs.new_version }}
+            ${{ steps.image_names.outputs.ghcr_image }}:${{ steps.get_version.outputs.new_tag || steps.next_version.outputs.new_tag }}
+            ${{ (steps.get_version.outputs.is_prerelease != 'true' || steps.next_version.outputs.is_prerelease != 'true') && format('{0}:{1}', steps.image_names.outputs.ghcr_image, steps.image_names.outputs.floating_tag) || '' }}
+            ${{ steps.image_names.outputs.ghcr_image }}:${{ steps.get_version.outputs.new_version || steps.next_version.outputs.new_version }}
           labels: |
-            org.opencontainers.image.version=${{ steps.next_version.outputs.new_version }}
+            org.opencontainers.image.version=${{ steps.get_version.outputs.new_version || steps.next_version.outputs.new_version }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha
