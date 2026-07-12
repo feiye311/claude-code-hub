@@ -115,7 +115,8 @@ export async function POST(request: Request) {
 
   // 按供应商类型决定首选格式
   const primaryFormat: "anthropic" | "openai" = isAnthropic ? "anthropic" : "openai";
-  const fallbackFormat: "anthropic" | "openai" = primaryFormat === "anthropic" ? "openai" : "anthropic";
+  const fallbackFormat: "anthropic" | "openai" =
+    primaryFormat === "anthropic" ? "openai" : "anthropic";
 
   logger.info({
     action: "model_test_direct",
@@ -184,10 +185,7 @@ export async function POST(request: Request) {
         }
       }
 
-      return Response.json(
-        { error: { message: errorMessage } },
-        { status: upstreamStatus }
-      );
+      return Response.json({ error: { message: errorMessage } }, { status: upstreamStatus });
     }
 
     return new Response(upstreamResponse.body, {
