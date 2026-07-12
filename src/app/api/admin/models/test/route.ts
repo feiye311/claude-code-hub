@@ -81,35 +81,41 @@ export async function POST(request: Request) {
   const providerUrl = provider.url.replace(/\/$/, "");
   const isAnthropic = provider.providerType === "claude" || provider.providerType === "claude-auth";
 
-  let upstreamUrl: string;
-  let headers: Record<string, string>;
-  let requestBody: Record<string, unknown>;
-
-  if (isAnthropic) {
-    upstreamUrl = `${providerUrl}/v1/messages`;
-    headers = {
-      "Content-Type": "application/json",
-      "x-api-key": provider.key,
-      "anthropic-version": "2023-06-01",
-    };
-    requestBody = {
-      model: upstreamModel,
-      max_tokens: 4096,
-      messages,
-      stream: true,
-    };
-  } else {
-    upstreamUrl = `${providerUrl}/v1/chat/completions`;
-    headers = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${provider.key}`,
-    };
-    requestBody = {
-      model: upstreamModel,
-      messages,
-      stream: true,
+  // 请求构造函数: Anthropic 格式和 OpenAI 格式
+  function buildRequest(format: "anthropic" | "openai") {
+    if (format === "anthropic") {
+      return {
+        url: `${providerUrl}/v1/messages`,
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": provider.key,
+          "anthropic-version": "2023-06-01",
+        } as Record<string, string>,
+        body: {
+          model: upstreamModel,
+          max_tokens: 4096,
+          messages,
+          stream: true,
+        } as Record<string, unknown>,
+      };
+    }
+    return {
+      url: `${providerUrl}/v1/chat/completions`,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${provider.key}`,
+      } as Record<string, string>,
+      body: {
+        model: upstreamModel,
+        messages,
+        stream: true,
+      } as Record<string, unknown>,
     };
   }
+
+  // 按供应商类型决定首选格式
+  const primaryFormat: "anthropic" | "openai" = isAnthropic ? "anthropic" : "openai";
+  const fallbackFormat: "anthropic" | "openai" = primaryFormat === "anthropic" ? "openai" : "anthropic";
 
   logger.info({
     action: "model_test_direct",
@@ -117,16 +123,39 @@ export async function POST(request: Request) {
     upstreamModel,
     providerId,
     providerName: provider.name,
-    upstreamUrl,
+    providerType: provider.providerType,
+    primaryFormat,
   });
 
   try {
-    const upstreamResponse = await fetch(upstreamUrl, {
+    const primary = buildRequest(primaryFormat);
+
+    let upstreamResponse = await fetch(primary.url, {
       method: "POST",
-      headers,
-      body: JSON.stringify(requestBody),
+      headers: primary.headers,
+      body: JSON.stringify(primary.body),
       signal: request.signal,
     });
+
+    // 首选格式返回 404 时,自动尝试另一种格式
+    if (upstreamResponse.status === 404 && primaryFormat !== fallbackFormat) {
+      const fallback = buildRequest(fallbackFormat);
+      logger.info({
+        action: "model_test_fallback",
+        model,
+        providerId,
+        primaryUrl: primary.url,
+        fallbackUrl: fallback.url,
+      });
+      upstreamResponse = await fetch(fallback.url, {
+        method: "POST",
+        headers: fallback.headers,
+        body: JSON.stringify(fallback.body),
+        signal: request.signal,
+      });
+    }
+
+    const upstreamUrl = upstreamResponse.url;
 
     if (!upstreamResponse.ok || !upstreamResponse.body) {
       const errorText = await upstreamResponse.text();
