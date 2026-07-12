@@ -19,6 +19,11 @@ on:
         description: 'Beta/RC number (only for beta/rc types)'
         required: false
         default: '1'
+      docker_only:
+        description: 'Only build and push Docker image (skip version bump, tag, release)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -37,6 +42,7 @@ jobs:
 
       - name: Check if version bump is needed
         id: check
+        if: github.event.inputs.docker_only != 'true'
         run: |
           # 检测是否是合并提交
           PARENT_COUNT=$(git rev-list --parents -n 1 HEAD | wc -w)
@@ -91,17 +97,14 @@ jobs:
           fi
 
       - name: Get current version
-        if: steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch'
         id: get_version
         run: |
-          # 以 VERSION 文件作为版本号的主要来源
           FILE_VERSION=$(cat VERSION 2>/dev/null | tr -d '[:space:]' || echo "")
 
           if [ -n "$FILE_VERSION" ]; then
             VERSION="$FILE_VERSION"
             echo "Using VERSION file: $VERSION"
           else
-            # VERSION 文件不存在时,回退到最新 tag
             LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
             VERSION=${LATEST_TAG#v}
             echo "VERSION file not found, using tag: $VERSION"
@@ -110,8 +113,15 @@ jobs:
           echo "Current version: $VERSION"
           echo "current_version=$VERSION" >> $GITHUB_OUTPUT
 
+          # docker_only 模式: 直接用当前版本,不递增
+          if [ "${{ github.event.inputs.docker_only }}" = "true" ]; then
+            echo "new_version=$VERSION" >> $GITHUB_OUTPUT
+            echo "new_tag=v$VERSION" >> $GITHUB_OUTPUT
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Calculate next version
-        if: steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch'
+        if: github.event.inputs.docker_only != 'true' && (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch')
         id: next_version
         env:
           VERSION_TYPE: ${{ github.event.inputs.version_type || 'patch' }}
@@ -171,24 +181,24 @@ jobs:
           echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
 
       - name: Update VERSION file
-        if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && steps.next_version.outputs.is_prerelease != 'true'
+        if: github.event.inputs.docker_only != 'true' && (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && steps.next_version.outputs.is_prerelease != 'true'
         run: |
           echo "${{ steps.next_version.outputs.new_version }}" > VERSION
 
       - name: Setup Node.js for formatting
-        if: steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch'
+        if: github.event.inputs.docker_only != 'true' && (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch')
         uses: actions/setup-node@v6
         with:
           node-version: "20"
 
       - name: Setup Bun
-        if: steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch'
+        if: github.event.inputs.docker_only != 'true' && (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch')
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .bun-version
 
       - name: Cache Bun package cache
-        if: steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch'
+        if: github.event.inputs.docker_only != 'true' && (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch')
         uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
@@ -198,7 +208,7 @@ jobs:
             ${{ runner.os }}-bun-
 
       - name: Install dependencies, type check, and format code
-        if: steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch'
+        if: github.event.inputs.docker_only != 'true' && (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch')
         timeout-minutes: 15
         run: |
           # No lockfile is committed in this repository, so use a non-frozen install.
@@ -207,7 +217,7 @@ jobs:
           bun run format
 
       - name: Commit VERSION and formatted code
-        if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
+        if: github.event.inputs.docker_only != 'true' && (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
         run: |
           # 配置git
           git config user.name "github-actions[bot]"
@@ -228,7 +238,7 @@ jobs:
           fi
 
       - name: Create and push tag
-        if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
+        if: github.event.inputs.docker_only != 'true' && (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
         run: |
           NEW_TAG="${{ steps.next_version.outputs.new_tag }}"
           BRANCH="${{ github.ref_name }}"
@@ -237,7 +247,7 @@ jobs:
 
       - name: Prepare image names
         id: image_names
-        if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
+        if: success()
         run: |
           GHCR_IMAGE=$(echo "ghcr.io/${{ github.repository_owner }}/claude-code-hub" | tr '[:upper:]' '[:lower:]')
 
@@ -253,7 +263,7 @@ jobs:
           echo "floating_tag=${FLOATING_TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
-        if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
+        if: github.event.inputs.docker_only != 'true' && (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.next_version.outputs.new_tag }}
@@ -275,7 +285,7 @@ jobs:
 
       # 自清理旧的tags和releases(保持最近50个) - 仅清理正式版本
       - name: Cleanup old tags and releases
-        if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && steps.next_version.outputs.is_prerelease != 'true' && success()
+        if: github.event.inputs.docker_only != 'true' && (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && steps.next_version.outputs.is_prerelease != 'true' && success()
         continue-on-error: true
         env:
           TAGS_TO_KEEP: 50
@@ -376,15 +386,15 @@ jobs:
 
       # Docker构建步骤
       - name: Set up QEMU
-        if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
+        if: success()
         uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
+        if: success()
         uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
+        if: success()
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -392,7 +402,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
-        if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
+        if: success()
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -402,11 +412,11 @@ jobs:
           build-args: |
             APP_VERSION=${{ steps.next_version.outputs.new_version }}
           tags: |
-            ${{ steps.image_names.outputs.ghcr_image }}:${{ steps.next_version.outputs.new_tag }}
-            ${{ steps.next_version.outputs.is_prerelease != 'true' && format('{0}:{1}', steps.image_names.outputs.ghcr_image, steps.image_names.outputs.floating_tag) || '' }}
-            ${{ steps.image_names.outputs.ghcr_image }}:${{ steps.next_version.outputs.new_version }}
+            ${{ steps.image_names.outputs.ghcr_image }}:${{ steps.get_version.outputs.new_tag || steps.next_version.outputs.new_tag }}
+            ${{ (steps.get_version.outputs.is_prerelease != 'true' || steps.next_version.outputs.is_prerelease != 'true') && format('{0}:{1}', steps.image_names.outputs.ghcr_image, steps.image_names.outputs.floating_tag) || '' }}
+            ${{ steps.image_names.outputs.ghcr_image }}:${{ steps.get_version.outputs.new_version || steps.next_version.outputs.new_version }}
           labels: |
-            org.opencontainers.image.version=${{ steps.next_version.outputs.new_version }}
+            org.opencontainers.image.version=${{ steps.get_version.outputs.new_version || steps.next_version.outputs.new_version }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha
