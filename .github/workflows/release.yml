@@ -240,7 +240,16 @@ jobs:
         run: |
           GHCR_IMAGE=$(echo "ghcr.io/${{ github.repository_owner }}/claude-code-hub" | tr '[:upper:]' '[:lower:]')
 
+          # 根据发布分支决定浮动 tag: main -> latest, dev -> dev
+          BRANCH="${{ github.ref_name }}"
+          if [ "$BRANCH" = "main" ]; then
+            FLOATING_TAG="latest"
+          else
+            FLOATING_TAG="$BRANCH"
+          fi
+
           echo "ghcr_image=${GHCR_IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "floating_tag=${FLOATING_TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
@@ -253,7 +262,7 @@ jobs:
 
             ```bash
             docker pull ${{ steps.image_names.outputs.ghcr_image }}:${{ steps.next_version.outputs.new_tag }}
-            ${{ steps.next_version.outputs.is_prerelease != 'true' && format('docker pull {0}:latest', steps.image_names.outputs.ghcr_image) || '' }}
+            ${{ steps.next_version.outputs.is_prerelease != 'true' && format('docker pull {0}:{1}', steps.image_names.outputs.ghcr_image, steps.image_names.outputs.floating_tag) || '' }}
             ```
 
             ---
@@ -393,7 +402,7 @@ jobs:
             APP_VERSION=${{ steps.next_version.outputs.new_version }}
           tags: |
             ${{ steps.image_names.outputs.ghcr_image }}:${{ steps.next_version.outputs.new_tag }}
-            ${{ steps.next_version.outputs.is_prerelease != 'true' && format('{0}:latest', steps.image_names.outputs.ghcr_image) || '' }}
+            ${{ steps.next_version.outputs.is_prerelease != 'true' && format('{0}:{1}', steps.image_names.outputs.ghcr_image, steps.image_names.outputs.floating_tag) || '' }}
             ${{ steps.image_names.outputs.ghcr_image }}:${{ steps.next_version.outputs.new_version }}
           labels: |
             org.opencontainers.image.version=${{ steps.next_version.outputs.new_version }}
@@ -402,9 +411,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # 同步 main 分支到 dev 分支 (rebase dev onto main) - 仅正式版本触发
+      # 同步 main 分支到 dev 分支 (rebase dev onto main) - 仅从 main 分支正式发布时触发
       - name: Sync main to dev branch
-        if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && steps.next_version.outputs.is_prerelease != 'true' && success()
+        if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && steps.next_version.outputs.is_prerelease != 'true' && github.ref_name == 'main' && success()
         id: sync_dev
         continue-on-error: true
         env:
