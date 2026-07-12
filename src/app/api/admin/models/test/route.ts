@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/drizzle/db";
 import { providers } from "@/drizzle/schema";
+import { buildProxyUrl } from "@/app/v1/_lib/url";
 import { getSession } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import {
@@ -8,6 +9,8 @@ import {
   hasProviderModelRedirectRules,
   normalizeProviderModelRedirectRules,
 } from "@/lib/provider-model-redirects";
+import { resolveAnthropicAuthHeaders } from "@/app/v1/_lib/headers";
+import type { ProviderType } from "@/types/provider";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,6 +20,7 @@ export const dynamic = "force-dynamic";
  *
  * 模型测试：直接用渠道上游的 key 调用上游 API，不走本地 proxy。
  * 自动应用供应商的 modelRedirects 将本地模型名映射为上游模型名。
+ * URL 构建与供应商设置页面的测试连接完全一致（使用 buildProxyUrl）。
  *
  * Body: { model, messages, providerId }
  * Response: 透传上游 SSE 流
@@ -38,7 +42,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "缺少 model、messages 或 providerId 参数" }, { status: 400 });
   }
 
-  // 获取供应商的 URL、key 和 modelRedirects
+  // 获取供应商信息
   const [provider] = await db
     .select({
       id: providers.id,
@@ -77,19 +81,27 @@ export async function POST(request: Request) {
     });
   }
 
-  // 构建上游请求
-  const providerUrl = provider.url.replace(/\/$/, "");
-  const isAnthropic = provider.providerType === "claude" || provider.providerType === "claude-auth";
+  const providerType = provider.providerType as ProviderType;
+  const isAnthropic = providerType === "claude" || providerType === "claude-auth";
+  const providerUrl = provider.url;
 
-  // 请求构造函数: Anthropic 格式和 OpenAI 格式
+  // 构建请求配置: 按 Anthropic / OpenAI 两种格式
   function buildRequest(format: "anthropic" | "openai") {
+    const requestPath = format === "anthropic" ? "/v1/messages" : "/v1/chat/completions";
+    // 使用 buildProxyUrl 与 proxy 转发和供应商测试保持一致的 URL 拼接逻辑
+    const requestUrl = new URL(`https://model-test.local${requestPath}`);
+    const finalUrl = buildProxyUrl(providerUrl, requestUrl);
+
     if (format === "anthropic") {
+      const authHeaders = resolveAnthropicAuthHeaders(provider.key, providerUrl, {
+        forceBearerOnly: providerType === "claude-auth",
+      });
       return {
-        url: `${providerUrl}/v1/messages`,
+        url: finalUrl,
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": provider.key,
           "anthropic-version": "2023-06-01",
+          ...authHeaders,
         } as Record<string, string>,
         body: {
           model: upstreamModel,
@@ -100,7 +112,7 @@ export async function POST(request: Request) {
       };
     }
     return {
-      url: `${providerUrl}/v1/chat/completions`,
+      url: finalUrl,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${provider.key}`,
@@ -124,7 +136,7 @@ export async function POST(request: Request) {
     upstreamModel,
     providerId,
     providerName: provider.name,
-    providerType: provider.providerType,
+    providerType,
     primaryFormat,
   });
 
@@ -156,7 +168,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const upstreamUrl = upstreamResponse.url;
+    const finalUpstreamUrl = upstreamResponse.url;
 
     if (!upstreamResponse.ok || !upstreamResponse.body) {
       const errorText = await upstreamResponse.text();
@@ -168,7 +180,7 @@ export async function POST(request: Request) {
         upstreamModel,
         providerId,
         providerName: provider.name,
-        upstreamUrl,
+        upstreamUrl: finalUpstreamUrl,
         upstreamStatus,
         upstreamBody: errorText.slice(0, 500),
       });
@@ -180,7 +192,6 @@ export async function POST(request: Request) {
           errorMessage =
             errorJson.error?.message || errorJson.message || errorJson.error || errorMessage;
         } catch {
-          // 非 JSON 响应,截取前 500 字符作为错误信息
           errorMessage = errorText.slice(0, 500) || errorMessage;
         }
       }
