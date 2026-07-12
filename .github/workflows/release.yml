@@ -231,8 +231,9 @@ jobs:
         if: (steps.check.outputs.needs_bump == 'true' || github.event_name == 'workflow_dispatch') && success()
         run: |
           NEW_TAG="${{ steps.next_version.outputs.new_tag }}"
+          BRANCH="${{ github.ref_name }}"
           git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
-          git push origin HEAD:main "$NEW_TAG"
+          git push origin "HEAD:${BRANCH}" "$NEW_TAG"
 
       - name: Prepare image names
         id: image_names
