@@ -220,7 +220,7 @@ const UPSTREAM_CONFIGS: Record<string, UpstreamFetchConfig> = {
       const prefix = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
       return `${prefix}/models`;
     },
-    buildHeaders: (p) => ({ Authorization: `Bearer ${p.key}` }),
+    buildHeaders: (p) => ({ Authorization: `Bearer ${Array.isArray(p.key) ? p.key[0] ?? "" : p.key}` }),
     parseResponse: (body) => {
       const data = (body as { data?: Array<{ id: string }> }).data || [];
       return data.map((m) => ({ id: m.id }));
