@@ -148,11 +148,18 @@ export function selectAvailableKey(
 }
 
 /**
- * 规范化 key 字段：兼容旧数据的字符串格式
+ * 规范化 key 字段：兼容旧数据的字符串格式，自动去重
  */
 export function normalizeKeys(keyField: unknown): string[] {
   if (Array.isArray(keyField)) {
-    return keyField.filter((k): k is string => typeof k === "string" && k.trim().length > 0);
+    const seen = new Set<string>();
+    return keyField.filter((k): k is string => {
+      if (typeof k !== "string") return false;
+      const trimmed = k.trim();
+      if (!trimmed || seen.has(trimmed)) return false;
+      seen.add(trimmed);
+      return true;
+    });
   }
   if (typeof keyField === "string" && keyField.trim().length > 0) {
     return [keyField.trim()];

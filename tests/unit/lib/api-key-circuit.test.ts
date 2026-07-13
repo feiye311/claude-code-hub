@@ -24,6 +24,10 @@ describe("api-key-circuit - normalizeKeys", () => {
     ]);
   });
 
+  test("重复 key 自动去重", () => {
+    expect(mod.normalizeKeys(["sk-1", "sk-2", "sk-1", "  sk-1  "])).toEqual(["sk-1", "sk-2"]);
+  });
+
   test("null / undefined / 空字符串 返回空数组", () => {
     expect(mod.normalizeKeys(null)).toEqual([]);
     expect(mod.normalizeKeys(undefined)).toEqual([]);
