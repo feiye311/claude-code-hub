@@ -5127,6 +5127,9 @@ async function fetchOpenAIModels(
 ): Promise<FetchUpstreamModelsResult> {
   const url = `${normalizedUrl}/v1/models`;
 
+  // 多 key 支持：取第一个 key 用于请求
+  const primaryKey = data.apiKey.split(/\r?\n/).map(k => k.trim()).filter(Boolean)[0] ?? data.apiKey;
+
   try {
     const response = await executeProxiedFetch(
       {
@@ -5134,7 +5137,7 @@ async function fetchOpenAIModels(
         proxyFallbackToDirect: data.proxyFallbackToDirect ?? false,
       },
       url,
-      { Authorization: `Bearer ${data.apiKey}` },
+      { Authorization: `Bearer ${primaryKey}` },
       timeoutMs
     );
 
@@ -5169,12 +5172,14 @@ async function fetchGeminiModels(
   };
 
   // Gemini 认证处理
-  let processedApiKey = data.apiKey;
+  // 多 key 支持：取第一个 key
+  const geminiPrimaryKey = data.apiKey.split(/\r?\n/).map(k => k.trim()).filter(Boolean)[0] ?? data.apiKey;
+  let processedApiKey = geminiPrimaryKey;
   let isJsonCreds = false;
 
   try {
-    processedApiKey = await GeminiAuth.getAccessToken(data.apiKey);
-    isJsonCreds = GeminiAuth.isJson(data.apiKey);
+    processedApiKey = await GeminiAuth.getAccessToken(geminiPrimaryKey);
+    isJsonCreds = GeminiAuth.isJson(geminiPrimaryKey);
   } catch (e) {
     logger.warn("fetchGeminiModels: auth process failed", { error: e });
   }
@@ -5235,8 +5240,11 @@ async function fetchAnthropicModels(
 ): Promise<FetchUpstreamModelsResult> {
   const url = `${normalizedUrl}/v1/models`;
 
+  // 多 key 支持：取第一个 key
+  const anthropicPrimaryKey = data.apiKey.split(/\r?\n/).map(k => k.trim()).filter(Boolean)[0] ?? data.apiKey;
+
   // 复用认证逻辑：官方 API 用 x-api-key，代理用 Bearer token
-  const authHeaders = resolveAnthropicAuthHeaders(data.apiKey, normalizedUrl, {
+  const authHeaders = resolveAnthropicAuthHeaders(anthropicPrimaryKey, normalizedUrl, {
     forceBearerOnly: data.providerType === "claude-auth",
   });
 
