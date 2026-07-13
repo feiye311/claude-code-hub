@@ -3984,10 +3984,12 @@ async function executeProviderApiTest(
       }
 
       const timeoutMs = options.timeoutMs ?? API_TEST_CONFIG.TIMEOUT_MS;
+      // 多 key 支持：取第一个 key 用于测试请求
+      const testApiKey = data.apiKey.split(/\r?\n/).map(k => k.trim()).filter(Boolean)[0] ?? data.apiKey;
       const init: UndiciFetchOptions = {
         method: "POST",
         headers: {
-          ...options.headers(data.apiKey, {
+          ...options.headers(testApiKey, {
             providerUrl: normalizedProviderUrl,
           }),
           // 使用渠道特定的 User-Agent，避免被 Cloudflare Bot 检测拦截
@@ -4429,13 +4431,15 @@ export async function testProviderGemini(
   });
 
   // 预处理 Auth，如果是 API Key 保持原样，如果是 JSON 则解析 Access Token
-  let processedApiKey = data.apiKey;
+  // 多 key 支持：取第一个 key
+  const geminiTestKey = data.apiKey.split(/\r?\n/).map(k => k.trim()).filter(Boolean)[0] ?? data.apiKey;
+  let processedApiKey = geminiTestKey;
   let isJsonCreds = false;
 
   try {
     // 使用 GeminiAuth 获取 token (如果是 json 凭证)
-    processedApiKey = await GeminiAuth.getAccessToken(data.apiKey);
-    isJsonCreds = GeminiAuth.isJson(data.apiKey);
+    processedApiKey = await GeminiAuth.getAccessToken(geminiTestKey);
+    isJsonCreds = GeminiAuth.isJson(geminiTestKey);
   } catch (e) {
     // 忽略错误，让后续请求失败
     logger.warn("testProviderGemini:auth_process_failed", { error: e });

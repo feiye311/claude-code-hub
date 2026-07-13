@@ -170,6 +170,8 @@ export function getTestHeaders(
     geminiBearerAuth?: boolean;
   }
 ): Record<string, string> {
+  // 多 key 支持：取第一个 key 用于请求
+  const key = apiKey.split(/\r?\n/).map(k => k.trim()).filter(Boolean)[0] ?? apiKey;
   const headers: Record<string, string> = {
     ...BASE_HEADERS,
     "User-Agent": overrides?.userAgent || USER_AGENTS[providerType],
@@ -180,7 +182,7 @@ export function getTestHeaders(
     case "claude-auth":
       Object.assign(headers, {
         ...CLAUDE_TEST_HEADERS,
-        ...resolveAnthropicAuthHeaders(apiKey, providerUrl, {
+        ...resolveAnthropicAuthHeaders(key, providerUrl, {
           forceBearerOnly: providerType === "claude-auth",
         }),
       });
@@ -188,13 +190,13 @@ export function getTestHeaders(
     case "codex":
       Object.assign(headers, {
         ...CODEX_TEST_HEADERS,
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${key}`,
       });
       break;
     case "openai-compatible":
       Object.assign(headers, {
         ...OPENAI_TEST_HEADERS,
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${key}`,
       });
       break;
     case "gemini":
@@ -205,8 +207,8 @@ export function getTestHeaders(
         // JSON credentials are exchanged for an OAuth access token upstream,
         // which Gemini only accepts as a Bearer token
         overrides?.geminiBearerAuth
-          ? { Authorization: `Bearer ${apiKey}` }
-          : { "x-goog-api-key": apiKey }
+          ? { Authorization: `Bearer ${key}` }
+          : { "x-goog-api-key": key }
       );
       break;
     default:

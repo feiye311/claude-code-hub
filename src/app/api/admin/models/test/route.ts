@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       url: finalUrl,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${provider.key}`,
+        Authorization: `Bearer ${Array.isArray(provider.key) ? provider.key[0] ?? "" : provider.key}`,
       } as Record<string, string>,
       body: {
         model: upstreamModel,
