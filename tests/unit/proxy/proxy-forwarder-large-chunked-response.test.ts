@@ -231,7 +231,10 @@ describe("ProxyForwarder - large chunked non-streaming response", () => {
         ProxyForwarder,
         session,
         provider,
-        baseUrl
+        baseUrl,
+        undefined,
+        1,
+        "test-key"
       ) as Promise<Response>;
 
       const result = await Promise.race([

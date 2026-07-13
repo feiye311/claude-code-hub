@@ -52,6 +52,13 @@ import { GeminiAuth } from "../gemini/auth";
 import { GEMINI_PROTOCOL } from "../gemini/protocol";
 import { HeaderProcessor, resolveAnthropicAuthHeaders } from "../headers";
 import {
+  selectAvailableKey,
+  recordKeyFailure,
+  recordKeySuccess,
+  incrementKeyConnection,
+  releaseKeyConnection,
+} from "@/lib/api-key-circuit";
+import {
   evaluateResponsesWsEligibility,
   getResponsesWsSessionId,
 } from "../responses-ws/eligibility";
@@ -1431,13 +1438,23 @@ export class ProxyForwarder {
           endpointUrl: sanitizeUrl(activeEndpoint.baseUrl),
         };
 
+        // 最少连接策略：选出当前活跃连接最少的可用 key
+        const providerKeys = Array.isArray(currentProvider.key)
+          ? currentProvider.key
+          : [currentProvider.key];
+        const selectedKey = selectAvailableKey(providerKeys, currentProvider.id);
+        const outboundKey = selectedKey?.key ?? (providerKeys[0] ?? "");
+        const outboundKeyIndex = selectedKey?.index ?? 0;
+        incrementKeyConnection(currentProvider.id, outboundKeyIndex);
+
         try {
           const response = await ProxyForwarder.doForward(
             session,
             currentProvider,
             activeEndpoint.baseUrl,
             endpointAudit,
-            attemptCount
+            attemptCount,
+            outboundKey
           );
 
           // ========== 空响应检测（仅非流式）==========
@@ -1722,6 +1739,9 @@ export class ProxyForwarder {
           if (shouldAccountCircuitBreaker) {
             recordSuccess(currentProvider.id);
           }
+
+          // 记录当前使用的 API Key 成功
+          recordKeySuccess(outboundKey);
 
           // ⭐ 成功后绑定 session 到供应商（智能绑定策略）
           if (session.sessionId) {
@@ -2212,6 +2232,9 @@ export class ProxyForwarder {
                 }
               }
 
+              // 记录当前使用的 API Key 失败
+              recordKeyFailure(outboundKey);
+
               ProxyForwarder.markProviderFailed(session, failedProviderIds, currentProvider.id);
               break; // 跳出内层循环，进入供应商切换逻辑
             }
@@ -2356,10 +2379,16 @@ export class ProxyForwarder {
               }
             }
 
+            // 记录当前使用的 API Key 失败
+            recordKeyFailure(outboundKey);
+
             // 加入失败列表并切换供应商
             ProxyForwarder.markProviderFailed(session, failedProviderIds, currentProvider.id);
             break; // 跳出内层循环，进入供应商切换逻辑
           }
+        } finally {
+          // 释放当前 key 的活跃连接计数
+          releaseKeyConnection(currentProvider.id, outboundKeyIndex);
         }
       } // ========== 内层循环结束 ==========
 
@@ -2414,8 +2443,9 @@ export class ProxyForwarder {
     session: ProxySession,
     provider: typeof session.provider,
     baseUrl: string,
-    endpointAudit?: { endpointId: number | null; endpointUrl: string },
-    attemptNumber?: number,
+    endpointAudit: { endpointId: number | null; endpointUrl: string } | undefined,
+    attemptNumber: number | undefined,
+    outboundKey: string,
     deferDetailSnapshotPersistence: boolean = false
   ): Promise<Response> {
     if (!provider) {
@@ -2453,6 +2483,9 @@ export class ProxyForwarder {
 
     // --- GEMINI HANDLING ---
     if (provider.providerType === "gemini" || provider.providerType === "gemini-cli") {
+      // 使用外部传入的 outboundKey（已由 send 方法通过最少连接策略选出）
+      const geminiKey = outboundKey;
+
       // 1. 直接透传请求体（不转换）- 仅对有 body 的请求
       const hasBody = session.method !== "GET" && session.method !== "HEAD";
       if (hasBody) {
@@ -2508,8 +2541,8 @@ export class ProxyForwarder {
           originalBody?.stream === true;
 
         // 2. 准备认证和 Headers
-        const accessToken = await GeminiAuth.getAccessToken(provider.key);
-        isApiKey = GeminiAuth.isApiKey(provider.key);
+        const accessToken = await GeminiAuth.getAccessToken(geminiKey);
+        isApiKey = GeminiAuth.isApiKey(geminiKey);
 
         // 3. 直接透传：使用 buildProxyUrl() 拼接原始路径和查询参数
         const effectiveBaseUrl =
@@ -2551,8 +2584,8 @@ export class ProxyForwarder {
           geminiPathname.includes("streamGenerateContent") ||
           geminiSearchParams.get("alt") === "sse";
 
-        const accessToken = await GeminiAuth.getAccessToken(provider.key);
-        isApiKey = GeminiAuth.isApiKey(provider.key);
+        const accessToken = await GeminiAuth.getAccessToken(geminiKey);
+        isApiKey = GeminiAuth.isApiKey(geminiKey);
 
         const effectiveBaseUrl =
           baseUrl ||
@@ -2786,7 +2819,7 @@ export class ProxyForwarder {
         );
       }
 
-      processedHeaders = ProxyForwarder.buildHeaders(session, provider, effectiveBaseUrl);
+      processedHeaders = ProxyForwarder.buildHeaders(session, provider, effectiveBaseUrl, outboundKey);
 
       // ⭐ 直接使用原始请求路径，让 buildProxyUrl() 智能处理路径拼接
       // 移除了强制 /v1/responses 路径重写，解决 Issue #139
@@ -4161,12 +4194,22 @@ export class ProxyForwarder {
           ? { ...attempt.provider, firstByteTimeoutStreamingMs: 0 }
           : attempt.provider;
 
+      // 最少连接策略选 key
+      const hedgeKeys = Array.isArray(attempt.provider.key)
+        ? attempt.provider.key
+        : [attempt.provider.key];
+      const hedgeSelected = selectAvailableKey(hedgeKeys, attempt.provider.id);
+      const hedgeOutboundKey = hedgeSelected?.key ?? (hedgeKeys[0] ?? "");
+      const hedgeKeyIndex = hedgeSelected?.index ?? 0;
+      incrementKeyConnection(attempt.provider.id, hedgeKeyIndex);
+
       void ProxyForwarder.doForward(
         attempt.session,
         providerForRequest,
         attempt.baseUrl,
         attempt.endpointAudit,
         attempt.requestAttemptCount,
+        hedgeOutboundKey,
         true
       )
         .then(async (response) => {
@@ -4267,6 +4310,9 @@ export class ProxyForwarder {
           const normalizedError =
             attemptError instanceof Error ? attemptError : new Error(String(attemptError));
           await handleAttemptFailure(attempt, normalizedError);
+        })
+        .finally(() => {
+          releaseKeyConnection(attempt.provider.id, hedgeKeyIndex);
         });
     };
 
@@ -5080,9 +5126,9 @@ export class ProxyForwarder {
   private static buildHeaders(
     session: ProxySession,
     provider: NonNullable<typeof session.provider>,
-    upstreamBaseUrl: string
+    upstreamBaseUrl: string,
+    outboundKey: string
   ): Headers {
-    const outboundKey = provider.key;
     const preserveClientIp = provider.preserveClientIp ?? false;
     const { clientIp, xForwardedFor } = ProxyForwarder.resolveClientIp(session.headers);
 

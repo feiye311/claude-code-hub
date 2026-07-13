@@ -134,9 +134,10 @@ export class McpPassthroughHandler {
     toolCall: McpToolCall
   ): Promise<McpToolResponse> {
     // 创建 Minimax 客户端
+    const minimaxApiKey = Array.isArray(provider.key) ? provider.key[0] ?? "" : provider.key;
     const config: McpClientConfig = {
       baseUrl: provider.url,
-      apiKey: provider.key,
+      apiKey: minimaxApiKey,
     };
     const client = new MinimaxMcpClient(config);
 
@@ -206,9 +207,10 @@ export class McpPassthroughHandler {
     toolCall: McpToolCall
   ): Promise<McpToolResponse> {
     // 创建 GLM 客户端
+    const glmApiKey = Array.isArray(provider.key) ? provider.key[0] ?? "" : provider.key;
     const config: McpClientConfig = {
       baseUrl: provider.url,
-      apiKey: provider.key,
+      apiKey: glmApiKey,
     };
     const client = new GlmMcpClient(config);
 

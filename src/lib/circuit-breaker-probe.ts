@@ -71,7 +71,7 @@ async function loadProviderConfigs(): Promise<void> {
           id: p.id,
           name: p.name,
           url: p.url,
-          key: p.key,
+          key: Array.isArray(p.key) ? p.key[0] ?? "" : p.key,
           providerType: (p.providerType || "claude") as ProviderType,
         },
       ])

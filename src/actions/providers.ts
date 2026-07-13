@@ -59,6 +59,7 @@ import {
   resolveProviderGroupsWithDefault,
 } from "@/lib/utils/provider-group";
 import { maskKey } from "@/lib/utils/validation";
+import { normalizeKeys } from "@/lib/api-key-circuit";
 import { extractZodErrorCode, formatZodError } from "@/lib/utils/zod-i18n";
 import { validateProviderUrlForConnectivity } from "@/lib/validation/provider-url";
 import { CreateProviderSchema, UpdateProviderSchema } from "@/lib/validation/schemas";
@@ -319,11 +320,13 @@ export async function getProviders(): Promise<ProviderDisplay[]> {
         updatedAtStr = createdAtStr;
       }
 
+      const keys = normalizeKeys(provider.key);
       return {
         id: provider.id,
         name: provider.name,
         url: provider.url,
-        maskedKey: maskKey(provider.key),
+        maskedKey: keys.length > 0 ? maskKey(keys[0]) : "",
+        keyCount: keys.length,
         isEnabled: provider.isEnabled,
         weight: provider.weight,
         priority: provider.priority,
@@ -3202,7 +3205,7 @@ export async function getUnmaskedProviderKey(id: number): Promise<ActionResult<{
       redactExtraKeys: ["key"],
     });
 
-    return { ok: true, data: { key: provider.key } };
+    return { ok: true, data: { key: Array.isArray(provider.key) ? provider.key.join("\n") : provider.key } };
   } catch (error) {
     logger.error("获取供应商密钥失败:", error);
     const message = error instanceof Error ? error.message : "获取供应商密钥失败";
@@ -4834,12 +4837,13 @@ export async function testProviderById(
 
   // JSON credentials must be exchanged for an access token and sent as a
   // Bearer header, mirroring the dedicated Gemini test/model-fetch flows
-  let apiKey = provider.key;
+  let apiKey = Array.isArray(provider.key) ? provider.key[0] ?? "" : provider.key;
   let geminiBearerAuth = false;
   if (isGeminiType) {
     try {
-      apiKey = await GeminiAuth.getAccessToken(provider.key);
-      geminiBearerAuth = GeminiAuth.isJson(provider.key);
+      const geminiKey = Array.isArray(provider.key) ? provider.key[0] ?? "" : provider.key;
+      apiKey = await GeminiAuth.getAccessToken(geminiKey);
+      geminiBearerAuth = GeminiAuth.isJson(geminiKey);
     } catch (error) {
       logger.warn("testProviderById: gemini auth preprocess failed", { error, providerId });
     }

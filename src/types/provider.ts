@@ -317,7 +317,7 @@ export interface Provider {
   id: number;
   name: string;
   url: string;
-  key: string;
+  key: string[]; // 多个 API Key（向后兼容旧数据时 normalizeKeys 会把 string 转 [string]）
   // 供应商聚合实体（按官网域名归一）
   providerVendorId: number | null;
   // 是否启用
@@ -445,6 +445,7 @@ export interface ProviderDisplay {
   name: string;
   url: string;
   maskedKey: string;
+  keyCount: number; // 可用 API Key 数量
   isEnabled: boolean;
   weight: number;
   // 优先级和分组配置

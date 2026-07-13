@@ -174,10 +174,10 @@ describe("ProxyForwarder - openai image constraints", () => {
     const fetchWithoutAutoDecode = vi.spyOn(ProxyForwarder as never, "fetchWithoutAutoDecode");
 
     const { doForward } = ProxyForwarder as unknown as {
-      doForward: (session: ProxySession, provider: Provider, baseUrl: string) => Promise<Response>;
+      doForward: (session: ProxySession, provider: Provider, baseUrl: string, endpointAudit: unknown, attemptNumber: number, outboundKey: string) => Promise<Response>;
     };
 
-    await expect(doForward(session, provider, provider.url)).rejects.toMatchObject<
+    await expect(doForward(session, provider, provider.url, undefined, 1, "test-key")).rejects.toMatchObject<
       Partial<ProxyError>
     >({
       message: expect.stringContaining("response_format"),
@@ -217,10 +217,10 @@ describe("ProxyForwarder - openai image constraints", () => {
     );
 
     const { doForward } = ProxyForwarder as unknown as {
-      doForward: (session: ProxySession, provider: Provider, baseUrl: string) => Promise<Response>;
+      doForward: (session: ProxySession, provider: Provider, baseUrl: string, endpointAudit: unknown, attemptNumber: number, outboundKey: string) => Promise<Response>;
     };
 
-    await doForward(session, provider, provider.url);
+    await doForward(session, provider, provider.url, undefined, 1, "test-key");
 
     expect(capturedHeaders?.get("content-type")).toContain("multipart/form-data");
     const bodyText = new TextDecoder().decode(new Uint8Array(capturedBody as ArrayBuffer));
@@ -255,10 +255,10 @@ describe("ProxyForwarder - openai image constraints", () => {
     );
 
     const { doForward } = ProxyForwarder as unknown as {
-      doForward: (session: ProxySession, provider: Provider, baseUrl: string) => Promise<Response>;
+      doForward: (session: ProxySession, provider: Provider, baseUrl: string, endpointAudit: unknown, attemptNumber: number, outboundKey: string) => Promise<Response>;
     };
 
-    await doForward(session, provider, provider.url);
+    await doForward(session, provider, provider.url, undefined, 1, "test-key");
 
     expect(capturedBody).toContain('"prompt":"otter"');
     expect(capturedBody).not.toContain("response_format");
@@ -292,10 +292,10 @@ describe("ProxyForwarder - openai image constraints", () => {
     );
 
     const { doForward } = ProxyForwarder as unknown as {
-      doForward: (session: ProxySession, provider: Provider, baseUrl: string) => Promise<Response>;
+      doForward: (session: ProxySession, provider: Provider, baseUrl: string, endpointAudit: unknown, attemptNumber: number, outboundKey: string) => Promise<Response>;
     };
 
-    await doForward(session, provider, provider.url);
+    await doForward(session, provider, provider.url, undefined, 1, "test-key");
 
     expect(capturedBody).toContain('"model":"gpt-image-1.5"');
     expect(capturedBody).not.toContain("response_format");
@@ -396,10 +396,10 @@ describe("ProxyForwarder - openai image constraints", () => {
     );
 
     const { doForward } = ProxyForwarder as unknown as {
-      doForward: (session: ProxySession, provider: Provider, baseUrl: string) => Promise<Response>;
+      doForward: (session: ProxySession, provider: Provider, baseUrl: string, endpointAudit: unknown, attemptNumber: number, outboundKey: string) => Promise<Response>;
     };
 
-    await doForward(session, provider, provider.url);
+    await doForward(session, provider, provider.url, undefined, 1, "test-key");
 
     expect(capturedBody).toContain('name="prompt"');
     expect(capturedBody).not.toContain("_internal");
@@ -443,10 +443,10 @@ describe("ProxyForwarder - openai image constraints", () => {
     );
 
     const { doForward } = ProxyForwarder as unknown as {
-      doForward: (session: ProxySession, provider: Provider, baseUrl: string) => Promise<Response>;
+      doForward: (session: ProxySession, provider: Provider, baseUrl: string, endpointAudit: unknown, attemptNumber: number, outboundKey: string) => Promise<Response>;
     };
 
-    await doForward(session, provider, provider.url);
+    await doForward(session, provider, provider.url, undefined, 1, "test-key");
 
     expect(capturedBody).not.toContain('name="_internal"');
     expect(capturedBody).not.toContain("secret.bin");

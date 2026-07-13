@@ -204,7 +204,10 @@ const UPSTREAM_CONFIGS: Record<string, UpstreamFetchConfig> = {
       const prefix = baseUrl.endsWith("/v1") ? baseUrl : `${baseUrl}/v1`;
       return `${prefix}/models`;
     },
-    buildHeaders: (p) => ({ "x-api-key": p.key, "anthropic-version": "2023-06-01" }),
+    buildHeaders: (p) => ({
+        "x-api-key": Array.isArray(p.key) ? p.key[0] ?? "" : p.key,
+        "anthropic-version": "2023-06-01",
+      }),
     parseResponse: (body) => {
       const data =
         (body as { data?: Array<{ id: string; display_name?: string; created_at?: string }> })
@@ -228,7 +231,9 @@ const UPSTREAM_CONFIGS: Record<string, UpstreamFetchConfig> = {
       const prefix = baseUrl.endsWith("/v1beta") ? baseUrl : `${baseUrl}/v1beta`;
       return `${prefix}/models`;
     },
-    buildHeaders: (p) => ({ "x-goog-api-key": p.key }),
+    buildHeaders: (p) => ({
+        "x-goog-api-key": Array.isArray(p.key) ? p.key[0] ?? "" : p.key,
+      }),
     parseResponse: (body) => {
       const models =
         (body as { models?: Array<{ name: string; displayName?: string }> }).models || [];

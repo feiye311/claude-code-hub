@@ -4,7 +4,8 @@
   "labelEdit": "API キー（空欄のままにすると変更しません）",
   "leaveEmpty": "（空欄のままにすると変更しません）",
   "leaveEmptyDesc": "空欄のままにすると既存のキーを保持します",
-  "placeholder": "API キーを入力",
+  "placeholder": "API キーを入力、1行に1つずつ複数キーでラウンドロビン負荷分散",
+  "multipleKeysHint": "1行に1つの API Key。複数キーでラウンドロビン負荷分散と自動サーキットブレイクが有効になります",
   "warnings": {
     "looks_like_auth_header": "リクエストヘッダー（例: Bearer/Authorization/x-api-key）を貼り付けたようです。キー本体のみを入力してください。",
     "wrapped_in_quotes": "前後が引用符で囲まれています。通常、引用符は不要です。",

@@ -216,7 +216,10 @@ describe("ProxyForwarder - non-ok response body hang", () => {
         ProxyForwarder,
         session,
         provider,
-        baseUrl
+        baseUrl,
+        undefined,
+        1,
+        "test-key"
       ) as Promise<Response>;
 
       const result = await Promise.race([
@@ -271,7 +274,10 @@ describe("ProxyForwarder - non-ok response body hang", () => {
         ProxyForwarder,
         session,
         provider,
-        baseUrl
+        baseUrl,
+        undefined,
+        1,
+        "test-key"
       ) as Promise<Response>;
 
       const result = await Promise.race([

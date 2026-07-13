@@ -124,10 +124,10 @@ describe("ProxyForwarder - OpenAI embeddings standard endpoint handling", () => 
     });
 
     const { doForward } = ProxyForwarder as unknown as {
-      doForward: (session: ProxySession, provider: Provider, baseUrl: string) => Promise<Response>;
+      doForward: (session: ProxySession, provider: Provider, baseUrl: string, endpointAudit: unknown, attemptNumber: number, outboundKey: string) => Promise<Response>;
     };
 
-    await doForward(session, provider, provider.url);
+    await doForward(session, provider, provider.url, undefined, 1, "test-key");
 
     expect(capturedUrl).toBe("https://openai.example.com/openai/v1/embeddings");
     expect(capturedUrl?.startsWith("https://mcp.example.com")).toBe(false);

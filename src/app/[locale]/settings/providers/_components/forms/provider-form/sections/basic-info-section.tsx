@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ExternalLink, Eye, EyeOff, Globe, Key, Link2, User } from "lucide-react";
+import { ExternalLink, Globe, Key, Link2, User } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { ProviderEndpointsSection } from "@/app/[locale]/settings/providers/_components/provider-endpoints-table";
 import { InlineWarning } from "@/components/ui/inline-warning";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { detectApiKeyWarnings } from "@/lib/utils/validation/api-key-warnings";
 import type { ProviderType } from "@/types/provider";
 import { UrlPreview } from "../../url-preview";
@@ -41,7 +42,6 @@ export function BasicInfoSection({ autoUrlPending, endpointPool }: BasicInfoSect
   const isEdit = mode === "edit";
   const isBatch = mode === "batch";
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const [showKey, setShowKey] = useState(false);
 
   const apiKeyWarnings = useMemo(() => detectApiKeyWarnings(state.basic.key), [state.basic.key]);
 
@@ -276,25 +276,18 @@ export function BasicInfoSection({ autoUrlPending, endpointPool }: BasicInfoSect
             }
             required={!isEdit}
           >
-            <div className="relative">
-              <Input
-                id={isEdit ? "edit-key" : "key"}
-                type={showKey ? "text" : "password"}
-                value={state.basic.key}
-                onChange={(e) => dispatch({ type: "SET_KEY", payload: e.target.value })}
-                placeholder={isEdit ? t("key.leaveEmptyDesc") : t("key.placeholder")}
-                disabled={state.ui.isPending}
-                className="pr-10 font-mono text-sm"
-                autoComplete="new-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
+            <Textarea
+              id={isEdit ? "edit-key" : "key"}
+              value={state.basic.key}
+              onChange={(e) => dispatch({ type: "SET_KEY", payload: e.target.value })}
+              placeholder={isEdit ? t("key.leaveEmptyDesc") : t("key.placeholder")}
+              disabled={state.ui.isPending}
+              className="font-mono text-sm min-h-[80px] resize-y"
+              autoComplete="new-password"
+              rows={3}
+            />
+
+            <p className="mt-1 text-xs text-muted-foreground">{t("key.multipleKeysHint")}</p>
 
             {apiKeyWarnings.length > 0 && (
               <div className="mt-2 space-y-1">

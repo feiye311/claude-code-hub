@@ -184,7 +184,8 @@ export const providers = pgTable('providers', {
   name: varchar('name').notNull(),
   description: text('description'),
   url: varchar('url').notNull(),
-  key: varchar('key').notNull(),
+  // 支持多个 API Key，按序轮换使用。JSON 数组格式 ["key1","key2"]，单个 key 字符串自动转为 [key]（兼容旧数据）
+  key: jsonb('key').notNull().$type<string[]>(),
   providerVendorId: integer('provider_vendor_id')
     .notNull()
     .references(() => providerVendors.id, {

@@ -100,12 +100,14 @@ function createGeminiProvider(providerType: "gemini" | "gemini-cli"): Provider {
 
 function buildHeaders(session: ProxySession, provider: Provider): Headers {
   const forwarder = ProxyForwarder as unknown as {
-    buildHeaders: (session: ProxySession, provider: Provider, upstreamBaseUrl: string) => Headers;
+    buildHeaders: (session: ProxySession, provider: Provider, upstreamBaseUrl: string, outboundKey: string) => Headers;
   };
+  const key = Array.isArray(provider.key) ? (provider.key[0] ?? "") : provider.key;
   return forwarder.buildHeaders(
     session,
     provider,
-    ((provider as { url?: string }).url ?? "https://example.com").toString()
+    ((provider as { url?: string }).url ?? "https://example.com").toString(),
+    key
   );
 }
 

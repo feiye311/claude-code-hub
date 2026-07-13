@@ -93,7 +93,8 @@ export async function POST(request: Request) {
     const finalUrl = buildProxyUrl(providerUrl, requestUrl);
 
     if (format === "anthropic") {
-      const authHeaders = resolveAnthropicAuthHeaders(provider.key, providerUrl, {
+      const outboundKey = Array.isArray(provider.key) ? provider.key[0] ?? "" : provider.key;
+      const authHeaders = resolveAnthropicAuthHeaders(outboundKey, providerUrl, {
         forceBearerOnly: providerType === "claude-auth",
       });
       return {

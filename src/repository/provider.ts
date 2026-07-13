@@ -195,7 +195,10 @@ export async function createProvider(providerData: CreateProviderData): Promise<
   const dbData = {
     name: providerData.name,
     url: providerData.url,
-    key: providerData.key,
+    key: providerData.key
+      .split(/\r?\n/)
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0),
     isEnabled: providerData.is_enabled,
     weight: providerData.weight,
     priority: providerData.priority,
@@ -638,7 +641,11 @@ export async function updateProvider(
 
   if (providerData.name !== undefined) dbData.name = providerData.name;
   if (providerData.url !== undefined) dbData.url = providerData.url;
-  if (providerData.key !== undefined) dbData.key = providerData.key;
+  if (providerData.key !== undefined)
+      dbData.key = providerData.key
+        .split(/\r?\n/)
+        .map((k) => k.trim())
+        .filter((k) => k.length > 0);
   if (providerData.is_enabled !== undefined) dbData.isEnabled = providerData.is_enabled;
   if (providerData.weight !== undefined) dbData.weight = providerData.weight;
   if (providerData.priority !== undefined) dbData.priority = providerData.priority;

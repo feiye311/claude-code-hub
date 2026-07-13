@@ -73,7 +73,7 @@ export function detectApiKeyWarnings(rawKey: string): ApiKeyWarningId[] {
     warnings.push("contains_non_ascii");
   }
 
-  if (!isLikelyJsonCredentials && /\s/.test(rawKey)) {
+  if (!isLikelyJsonCredentials && /[ \t\f\v]/.test(rawKey)) {
     warnings.push("contains_whitespace");
   }
 

@@ -113,10 +113,10 @@ describe("ProxyForwarder - official OpenAI endpoints stay on provider URL", () =
     });
 
     const { doForward } = ProxyForwarder as unknown as {
-      doForward: (session: ProxySession, provider: Provider, baseUrl: string) => Promise<Response>;
+      doForward: (session: ProxySession, provider: Provider, baseUrl: string, endpointAudit: unknown, attemptNumber: number, outboundKey: string) => Promise<Response>;
     };
 
-    await doForward(session, provider, provider.url);
+    await doForward(session, provider, provider.url, undefined, 1, "test-key");
 
     expect(capturedUrl).toBe("https://openai.example.com/openai/v1/files/file_123/content");
     expect(capturedUrl?.startsWith("https://mcp.example.com")).toBe(false);
@@ -134,10 +134,10 @@ describe("ProxyForwarder - official OpenAI endpoints stay on provider URL", () =
     });
 
     const { doForward } = ProxyForwarder as unknown as {
-      doForward: (session: ProxySession, provider: Provider, baseUrl: string) => Promise<Response>;
+      doForward: (session: ProxySession, provider: Provider, baseUrl: string, endpointAudit: unknown, attemptNumber: number, outboundKey: string) => Promise<Response>;
     };
 
-    await doForward(session, provider, provider.url);
+    await doForward(session, provider, provider.url, undefined, 1, "test-key");
 
     expect(capturedUrl).toBe("https://codex.example.com/v1/responses/resp_123");
     expect(capturedUrl?.startsWith("https://mcp.example.com")).toBe(false);

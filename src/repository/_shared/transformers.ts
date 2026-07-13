@@ -1,3 +1,4 @@
+import { normalizeKeys } from "@/lib/api-key-circuit";
 import { PROVIDER_TIMEOUT_DEFAULTS } from "@/lib/constants/provider.constants";
 import { normalizeProviderModelRedirectRules } from "@/lib/provider-model-redirects";
 import { formatCostForStorage } from "@/lib/utils/currency";
@@ -95,6 +96,7 @@ export function toKey(dbKey: any): Key {
 export function toProvider(dbProvider: any): Provider {
   return {
     ...dbProvider,
+    key: normalizeKeys(dbProvider?.key),
     providerVendorId: dbProvider?.providerVendorId ?? null,
     isEnabled: dbProvider?.isEnabled ?? true,
     weight: dbProvider?.weight ?? 1,

@@ -475,7 +475,10 @@ describe("ProxyResponseHandler - Gemini stream passthrough timeouts", () => {
         ProxyForwarder,
         session,
         provider,
-        baseUrl
+        baseUrl,
+        undefined,
+        1,
+        "test-key"
       )) as Response;
 
       const clientResponse = await ProxyResponseHandler.dispatch(session, upstreamResponse);
@@ -552,7 +555,10 @@ describe("ProxyResponseHandler - Gemini stream passthrough timeouts", () => {
         ProxyForwarder,
         session,
         provider,
-        baseUrl
+        baseUrl,
+        undefined,
+        1,
+        "test-key"
       )) as Response;
 
       const clientResponse = await ProxyResponseHandler.dispatch(session, upstreamResponse);
@@ -611,7 +617,10 @@ describe("ProxyResponseHandler - Gemini stream passthrough timeouts", () => {
         ProxyForwarder,
         session,
         provider,
-        baseUrl
+        baseUrl,
+        undefined,
+        1,
+        "test-key"
       )) as Response;
 
       const clientResponse = await ProxyResponseHandler.dispatch(session, upstreamResponse);
@@ -685,7 +694,10 @@ describe("ProxyResponseHandler - Gemini stream passthrough timeouts", () => {
         ProxyForwarder,
         session,
         provider,
-        baseUrl
+        baseUrl,
+        undefined,
+        1,
+        "test-key"
       )) as Response;
 
       const clientResponse = await ProxyResponseHandler.dispatch(session, upstreamResponse);

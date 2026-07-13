@@ -141,10 +141,10 @@ describe("ProxyForwarder raw passthrough regression", () => {
     });
 
     const { doForward } = ProxyForwarder as unknown as {
-      doForward: (session: ProxySession, provider: Provider, baseUrl: string) => Promise<Response>;
+      doForward: (session: ProxySession, provider: Provider, baseUrl: string, endpointAudit: unknown, attemptNumber: number, outboundKey: string) => Promise<Response>;
     };
 
-    await doForward(session, provider, provider.url);
+    await doForward(session, provider, provider.url, undefined, 1, "test-key");
 
     expect(readBodyText(capturedInit?.body)).toBe(originalBody);
   });
@@ -168,10 +168,10 @@ describe("ProxyForwarder raw passthrough regression", () => {
     });
 
     const { doForward } = ProxyForwarder as unknown as {
-      doForward: (session: ProxySession, provider: Provider, baseUrl: string) => Promise<Response>;
+      doForward: (session: ProxySession, provider: Provider, baseUrl: string, endpointAudit: unknown, attemptNumber: number, outboundKey: string) => Promise<Response>;
     };
 
-    await doForward(session, provider, provider.url);
+    await doForward(session, provider, provider.url, undefined, 1, "test-key");
 
     expect(capturedHeaders?.get("connection")).toBeNull();
     expect(capturedHeaders?.get("transfer-encoding")).toBeNull();
