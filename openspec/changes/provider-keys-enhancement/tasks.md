@@ -43,7 +43,7 @@
 
 ## 7. 测试
 
-- [ ] 7.1 编写权重比负载均衡单元测试 (tests/unit/lib/api-key-circuit.test.ts)
-- [ ] 7.2 编写 Key 级熔断单元测试 (tests/unit/lib/api-key-circuit.test.ts)
-- [ ] 7.3 编写 provider keys API 集成测试 (tests/api/v1/provider-keys/)
-- [ ] 7.4 编写现有 key 数据迁移测试 (tests/integration/migrate-provider-keys.test.ts)
+- [x] 7.1 编写权重比负载均衡单元测试 (tests/unit/lib/api-key-circuit.test.ts)
+- [x] 7.2 编写 Key 级熔断单元测试 (tests/unit/lib/api-key-circuit.test.ts)
+- [x] 7.3 编写 provider keys API 集成测试 (tests/api/v1/provider-keys/)
+- [x] 7.4 编写现有 key 数据迁移测试 (tests/integration/migrate-provider-keys.test.ts)
