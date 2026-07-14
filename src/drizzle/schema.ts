@@ -178,6 +178,20 @@ export const providerGroups = pgTable('provider_groups', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Provider Keys table
+export const providerKeys = pgTable('provider_keys', {
+  id: serial('id').primaryKey(),
+  providerId: integer('provider_id').notNull().references(() => providers.id, { onDelete: 'cascade' }),
+  key: varchar('key').notNull(),
+  name: varchar('name'),
+  weight: integer('weight').notNull().default(1),
+  isEnabled: boolean('is_enabled').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  providerKeysProviderIdIdx: index('idx_provider_keys_provider_id').on(table.providerId),
+}));
+
 // Providers table
 export const providers = pgTable('providers', {
   id: serial('id').primaryKey(),
@@ -1174,7 +1188,15 @@ export const providersRelations = relations(providers, ({ many, one }) => ({
     fields: [providers.providerVendorId],
     references: [providerVendors.id],
   }),
+  providerKeys: many(providerKeys),
   messageRequests: many(messageRequest),
+}));
+
+export const providerKeysRelations = relations(providerKeys, ({ one }) => ({
+  provider: one(providers, {
+    fields: [providerKeys.providerId],
+    references: [providers.id],
+  }),
 }));
 
 export const providerVendorsRelations = relations(providerVendors, ({ many }) => ({
