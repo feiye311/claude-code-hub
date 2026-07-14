@@ -230,8 +230,7 @@ export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionPro
       ) : null}
 
       {/* Inline add form */}
-      {isEdit && (
-        <div className="flex items-end gap-2">
+      <div className="flex items-end gap-2">
           <div className="flex-1">
             <Input
               value={newKey}
@@ -262,7 +261,6 @@ export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionPro
             {t("addKey")}
           </Button>
         </div>
-      )}
     </div>
   );
 }
