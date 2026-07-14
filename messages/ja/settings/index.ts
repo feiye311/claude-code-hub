@@ -38,6 +38,7 @@ import providersFormDeleteDialog from "./providers/form/deleteDialog.json";
 import providersFormErrors from "./providers/form/errors.json";
 import providersFormFailureThresholdConfirmDialog from "./providers/form/failureThresholdConfirmDialog.json";
 import providersFormKey from "./providers/form/key.json";
+import providersFormKeys from "./providers/form/keys.json";
 import providersFormMaxRetryAttempts from "./providers/form/maxRetryAttempts.json";
 import providersFormMatchTester from "./providers/form/matchTester.json";
 import providersFormModelRedirect from "./providers/form/modelRedirect.json";
@@ -65,6 +66,7 @@ const providersForm = {
   errors: providersFormErrors,
   failureThresholdConfirmDialog: providersFormFailureThresholdConfirmDialog,
   key: providersFormKey,
+  keys: providersFormKeys,
   matchTester: providersFormMatchTester,
   maxRetryAttempts: providersFormMaxRetryAttempts,
   modelRedirect: providersFormModelRedirect,

@@ -421,7 +421,9 @@ export function createInitialState(
           ? `${cloneProvider.name}_Copy`
           : (preset?.name ?? ""),
       url: cloneSafeUrlValue(sourceProvider?.url ?? preset?.url, isClone),
-      key: "",
+key: isEdit && sourceProvider?.keys
+        ? (sourceProvider.keys as string[]).join("\n")
+        : "",
       websiteUrl: cloneSafeUrlValue(sourceProvider?.websiteUrl ?? preset?.websiteUrl, isClone),
     },
     routing: {

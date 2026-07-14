@@ -327,6 +327,7 @@ export async function getProviders(): Promise<ProviderDisplay[]> {
         url: provider.url,
         maskedKey: keys.length > 0 ? maskKey(keys[0]) : "",
         keyCount: keys.length,
+        keys,
         isEnabled: provider.isEnabled,
         weight: provider.weight,
         priority: provider.priority,

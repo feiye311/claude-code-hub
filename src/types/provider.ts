@@ -445,7 +445,8 @@ export interface ProviderDisplay {
   name: string;
   url: string;
   maskedKey: string;
-  keyCount: number; // 可用 API Key 数量
+  keyCount: number;
+  keys: string[]; // 可用 API Key 数量
   isEnabled: boolean;
   weight: number;
   // 优先级和分组配置
