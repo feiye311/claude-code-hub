@@ -17,14 +17,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 
 interface ProviderKey {
   id: number;
@@ -43,7 +35,8 @@ interface ProviderKey {
 }
 
 interface ProviderKeysSectionProps {
-  providerId: number;
+  providerId?: number;
+  mode: "create" | "edit" | "batch";
 }
 
 function CircuitBadge({ state }: { state: ProviderKey["circuit"]["state"] }) {
@@ -60,16 +53,17 @@ function CircuitBadge({ state }: { state: ProviderKey["circuit"]["state"] }) {
   );
 }
 
-export function ProviderKeysSection({ providerId }: ProviderKeysSectionProps) {
+export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionProps) {
   const t = useTranslations("settings.providers.form.keys");
   const queryClient = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const isEdit = mode === "edit";
+
   const [newKey, setNewKey] = useState("");
-  const [newName, setNewName] = useState("");
   const [newWeight, setNewWeight] = useState(1);
 
   const { data, isLoading } = useQuery({
     queryKey: ["provider-keys", providerId],
+    enabled: isEdit && !!providerId,
     queryFn: async () => {
       const res = await fetch(`/api/v1/providers/${providerId}/keys`);
       if (!res.ok) throw new Error("Failed to fetch provider keys");
@@ -79,7 +73,7 @@ export function ProviderKeysSection({ providerId }: ProviderKeysSectionProps) {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (body: { key: string; name?: string; weight: number }) => {
+    mutationFn: async (body: { key: string; weight: number }) => {
       const res = await fetch(`/api/v1/providers/${providerId}/keys`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -90,9 +84,7 @@ export function ProviderKeysSection({ providerId }: ProviderKeysSectionProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["provider-keys", providerId] });
-      setDialogOpen(false);
       setNewKey("");
-      setNewName("");
       setNewWeight(1);
       toast.success(t("createSuccess"));
     },
@@ -159,74 +151,18 @@ export function ProviderKeysSection({ providerId }: ProviderKeysSectionProps) {
     onError: () => toast.error(t("resetError")),
   });
 
-  if (isLoading) {
+  const keys = isEdit ? (data ?? []) : [];
+
+  if (isEdit && isLoading) {
     return <Loader2 className="h-4 w-4 animate-spin" />;
   }
 
-  const keys = data ?? [];
-
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">{t("title")}</h3>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Plus className="mr-1 h-4 w-4" />
-              {t("addKey")}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{t("addKey")}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>{t("key")}</Label>
-                <Input
-                  value={newKey}
-                  onChange={(e) => setNewKey(e.target.value)}
-                  placeholder={t("keyPlaceholder")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("name")}</Label>
-                <Input
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder={t("namePlaceholder")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("weight")}</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={newWeight}
-                  onChange={(e) => setNewWeight(Math.max(1, Number(e.target.value)))}
-                />
-              </div>
-              <Button
-                onClick={() =>
-                  createMutation.mutate({ key: newKey, name: newName || undefined, weight: newWeight })
-                }
-                disabled={!newKey.trim() || createMutation.isPending}
-              >
-                {createMutation.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-                {t("confirm")}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {keys.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("noKeys")}</p>
-      ) : (
+    <div className="space-y-3">
+      {keys.length > 0 ? (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("name")}</TableHead>
               <TableHead>{t("key")}</TableHead>
               <TableHead>{t("weight")}</TableHead>
               <TableHead>{t("enabled")}</TableHead>
@@ -237,9 +173,8 @@ export function ProviderKeysSection({ providerId }: ProviderKeysSectionProps) {
           <TableBody>
             {keys.map((k) => (
               <TableRow key={k.id}>
-                <TableCell>{k.name ?? "-"}</TableCell>
-                <TableCell className="font-mono text-xs">
-                  {k.key.substring(0, 12)}...
+                <TableCell className="font-mono text-xs max-w-[200px] truncate">
+                  {k.key}
                 </TableCell>
                 <TableCell>
                   <Input
@@ -290,6 +225,43 @@ export function ProviderKeysSection({ providerId }: ProviderKeysSectionProps) {
             ))}
           </TableBody>
         </Table>
+      ) : isEdit ? (
+        <p className="text-sm text-muted-foreground">{t("noKeys")}</p>
+      ) : null}
+
+      {/* Inline add form */}
+      {isEdit && (
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <Input
+              value={newKey}
+              onChange={(e) => setNewKey(e.target.value)}
+              placeholder={t("keyPlaceholder")}
+              className="font-mono text-sm"
+            />
+          </div>
+          <div className="w-20">
+            <Input
+              type="number"
+              min={1}
+              value={newWeight}
+              onChange={(e) => setNewWeight(Math.max(1, Number(e.target.value)))}
+              placeholder={t("weight")}
+            />
+          </div>
+          <Button
+            size="sm"
+            onClick={() => createMutation.mutate({ key: newKey, weight: newWeight })}
+            disabled={!newKey.trim() || createMutation.isPending}
+          >
+            {createMutation.isPending ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="mr-1 h-4 w-4" />
+            )}
+            {t("addKey")}
+          </Button>
+        </div>
       )}
     </div>
   );

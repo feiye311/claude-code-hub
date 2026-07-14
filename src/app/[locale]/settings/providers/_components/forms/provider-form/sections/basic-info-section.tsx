@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { ExternalLink, Globe, Key, Link2, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef } from "react";
-import { ProviderEndpointsSection } from "@/app/[locale]/settings/providers/_components/provider-endpoints-table";
+import { ProviderKeysSection } from "./provider-keys-section";
 import { InlineWarning } from "@/components/ui/inline-warning";
 import { Input } from "@/components/ui/input";
 import {
@@ -262,42 +262,13 @@ export function BasicInfoSection({ autoUrlPending, endpointPool }: BasicInfoSect
         </>
       ) : null}
 
-      {/* Authentication */}
+      {/* Provider Keys */}
       <SectionCard
         title={t("sections.basic.auth.title")}
         description={t("sections.basic.auth.desc")}
         icon={Key}
       >
-        <div className="space-y-4">
-          <SmartInputWrapper
-            label={isEdit ? t("key.labelEdit") : t("key.label")}
-            description={
-              isEdit && provider ? t("key.currentKey", { key: provider.maskedKey }) : undefined
-            }
-            required={!isEdit}
-          >
-            <Textarea
-              id={isEdit ? "edit-key" : "key"}
-              value={state.basic.key}
-              onChange={(e) => dispatch({ type: "SET_KEY", payload: e.target.value })}
-              placeholder={isEdit ? t("key.leaveEmptyDesc") : t("key.placeholder")}
-              disabled={state.ui.isPending}
-              className="font-mono text-sm min-h-[80px] resize-y"
-              autoComplete="new-password"
-              rows={3}
-            />
-
-            <p className="mt-1 text-xs text-muted-foreground">{t("key.multipleKeysHint")}</p>
-
-            {apiKeyWarnings.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {apiKeyWarnings.map((warningId) => (
-                  <InlineWarning key={warningId}>{t(`key.warnings.${warningId}`)}</InlineWarning>
-                ))}
-              </div>
-            )}
-          </SmartInputWrapper>
-        </div>
+        <ProviderKeysSection providerId={provider?.id} mode={mode} />
       </SectionCard>
     </motion.div>
   );
