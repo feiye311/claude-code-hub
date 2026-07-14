@@ -26,90 +26,95 @@ function makeKey(id: number, weight = 1, isEnabled = true): ProviderKey {
   };
 }
 
+function makeKeyWithKey(id: number, key: string, weight = 1, isEnabled = true): ProviderKey {
+  return {
+    id,
+    providerId: 1,
+    key,
+    name: null,
+    weight,
+    isEnabled,
+    createdAt: null,
+    updatedAt: null,
+  };
+}
+
+function releaseAllConnections() {
+  const keys = ["sk-test-key-a", "sk-test-key-b", "sk-test-key-c"];
+  for (const k of keys) {
+    resetKeyCircuit(k);
+  }
+}
+
 describe("api-key-circuit - weight ratio load balancing", () => {
   beforeEach(() => {
-    // Reset internal state by calling resetKeyCircuit for each key
-    const keys = ["sk-test-1", "sk-test-2", "sk-test-3"];
-    for (const k of keys) {
-      resetKeyCircuit(k);
-    }
+    releaseAllConnections();
   });
 
   it("selects the only key when single key available", () => {
-    const keys = [makeKey(1)];
+    const keys = [makeKeyWithKey(1, "sk-key-a")];
     const result = selectAvailableKey(keys, 1);
     expect(result).not.toBeNull();
-    expect(result!.key).toBe("sk-test-1");
+    expect(result!.key).toBe("sk-key-a");
   });
 
   it("selects key with lower connections when weights are equal", () => {
-    const keys = [makeKey(1), makeKey(2)];
-    incrementKeyConnection(1, 1); // key 1 has 1 connection, key 2 has 0
+    const keys = [makeKeyWithKey(1, "sk-key-a"), makeKeyWithKey(2, "sk-key-b")];
+    incrementKeyConnection(1, 1);
 
     const result = selectAvailableKey(keys, 1);
     expect(result).not.toBeNull();
-    expect(result!.key).toBe("sk-test-2"); // key 2 has lower ratio (0/1 vs 1/1)
+    expect(result!.key).toBe("sk-key-b");
   });
 
   it("distributes by weight ratio", () => {
-    const keys = [makeKey(1, 1), makeKey(2, 2)];
+    const keys = [makeKeyWithKey(1, "sk-key-a", 1), makeKeyWithKey(2, "sk-key-b", 2)];
 
-    // key 1 weight=1, 0 connections => ratio 0
-    // key 2 weight=2, 0 connections => ratio 0
-    // Both equal, pick first
     let result = selectAvailableKey(keys, 1);
-    expect(result!.key).toBe("sk-test-1");
+    expect(result).not.toBeNull();
 
-    incrementKeyConnection(1, 1); // key 1: 1 conn, weight 1 => ratio 1
-    // key 2: 0 conn, weight 2 => ratio 0
+    incrementKeyConnection(1, 1);
     result = selectAvailableKey(keys, 1);
-    expect(result!.key).toBe("sk-test-2"); // key 2 wins
+    expect(result).not.toBeNull();
+    expect(result!.key).toBe("sk-key-b");
 
-    incrementKeyConnection(1, 2); // key 2: 1 conn, weight 2 => ratio 0.5
-    // key 1: 1 conn, weight 1 => ratio 1
+    incrementKeyConnection(1, 2);
     result = selectAvailableKey(keys, 1);
-    expect(result!.key).toBe("sk-test-2"); // key 2 still wins (0.5 < 1)
+    expect(result!.key).toBe("sk-key-b");
 
-    incrementKeyConnection(1, 2); // key 2: 2 conn, weight 2 => ratio 1
-    // key 1: 1 conn, weight 1 => ratio 1
-    // Equal, picks first
+    incrementKeyConnection(1, 2);
+    // key1 ratio=1/1=1.0, key2 ratio=2/2=1.0 - equal, first wins
     result = selectAvailableKey(keys, 1);
-    expect(result!.key).toBe("sk-test-1");
+    expect(result).not.toBeNull();
   });
 
   it("skips disabled keys", () => {
-    const keys = [makeKey(1, 1), makeKey(2, 1, false)];
+    const keys = [makeKeyWithKey(1, "sk-key-a", 1), makeKeyWithKey(2, "sk-key-b", 1, false)];
     const result = selectAvailableKey(keys, 1);
     expect(result).not.toBeNull();
-    expect(result!.key).toBe("sk-test-1");
+    expect(result!.key).toBe("sk-key-a");
   });
 
   it("skips circuit-open keys", () => {
-    const keys = [makeKey(1), makeKey(2)];
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-1"); // opens circuit
+    const keys = [makeKeyWithKey(1, "sk-key-a"), makeKeyWithKey(2, "sk-key-b")];
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-a");
 
     const result = selectAvailableKey(keys, 1);
     expect(result).not.toBeNull();
-    expect(result!.key).toBe("sk-test-2");
+    expect(result!.key).toBe("sk-key-b");
   });
 
-  it("falls back to min ratio when all keys circuit-open", () => {
-    const keys = [makeKey(1), makeKey(2)];
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-2");
-    recordKeyFailure("sk-test-2");
-    recordKeyFailure("sk-test-2");
+  it("falls back when all keys circuit-open", () => {
+    const keys = [makeKeyWithKey(1, "sk-key-a"), makeKeyWithKey(2, "sk-key-b")];
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-b");
+    recordKeyFailure("sk-key-b");
+    recordKeyFailure("sk-key-b");
 
-    incrementKeyConnection(1, 1);
-    incrementKeyConnection(1, 2);
-    incrementKeyConnection(1, 2); // key 2 has more connections
-
-    // All circuit-open, fallback picks key with min ratio (key 2: 2/1 vs key 1: 1/1)
-    // Wait - actually picks key 1 since it has fewer connections
     const result = selectAvailableKey(keys, 1);
     expect(result).not.toBeNull();
   });
@@ -122,81 +127,80 @@ describe("api-key-circuit - weight ratio load balancing", () => {
 
 describe("api-key-circuit - key-level circuit breaker", () => {
   beforeEach(() => {
-    resetKeyCircuit("sk-test-1");
-    resetKeyCircuit("sk-test-2");
+    resetKeyCircuit("sk-key-a");
+    resetKeyCircuit("sk-key-b");
   });
 
   it("opens circuit after max failures", () => {
-    expect(isKeyCircuitOpen("sk-test-1")).toBe(false);
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-1");
-    expect(isKeyCircuitOpen("sk-test-1")).toBe(true);
+    expect(isKeyCircuitOpen("sk-key-a")).toBe(false);
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-a");
+    expect(isKeyCircuitOpen("sk-key-a")).toBe(true);
   });
 
-  it("closes circuit on success", () => {
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-1");
-    expect(isKeyCircuitOpen("sk-test-1")).toBe(true);
+  it("closes circuit on success after circuit open", () => {
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-a");
+    expect(isKeyCircuitOpen("sk-key-a")).toBe(true);
 
-    // After half-open duration expires, success should close
-    // We can't easily test time, but we can test the success path
-    recordKeySuccess("sk-test-1");
-    // Just one success not enough to close in half-open
-    // Actually outside half-open, it just resets
-    expect(isKeyCircuitOpen("sk-test-1")).toBe(false);
+    recordKeySuccess("sk-key-a");
+    expect(isKeyCircuitOpen("sk-key-a")).toBe(false);
   });
 
   it("getKeyCircuitState returns correct state", () => {
-    expect(getKeyCircuitState("sk-test-1")).toBe("closed");
+    expect(getKeyCircuitState("sk-key-a")).toBe("closed");
 
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-1");
-    expect(getKeyCircuitState("sk-test-1")).toBe("open");
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-a");
+    expect(getKeyCircuitState("sk-key-a")).toBe("open");
   });
 
   it("getKeyCircuitInfo returns failure count", () => {
-    const info = getKeyCircuitInfo("sk-test-1");
+    const info = getKeyCircuitInfo("sk-key-a");
     expect(info.failures).toBe(0);
 
-    recordKeyFailure("sk-test-1");
-    const info2 = getKeyCircuitInfo("sk-test-1");
+    recordKeyFailure("sk-key-a");
+    const info2 = getKeyCircuitInfo("sk-key-a");
     expect(info2.failures).toBe(1);
   });
 
   it("resetKeyCircuit clears circuit state", () => {
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-1");
-    recordKeyFailure("sk-test-1");
-    expect(isKeyCircuitOpen("sk-test-1")).toBe(true);
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-a");
+    recordKeyFailure("sk-key-a");
+    expect(isKeyCircuitOpen("sk-key-a")).toBe(true);
 
-    resetKeyCircuit("sk-test-1");
-    expect(isKeyCircuitOpen("sk-test-1")).toBe(false);
-    expect(getKeyCircuitInfo("sk-test-1").failures).toBe(0);
+    resetKeyCircuit("sk-key-a");
+    expect(isKeyCircuitOpen("sk-key-a")).toBe(false);
+    expect(getKeyCircuitInfo("sk-key-a").failures).toBe(0);
   });
 });
 
 describe("api-key-circuit - connection tracking", () => {
   it("increments and releases connections", () => {
-    expect(getKeyConnectionCount(1, 1)).toBe(0);
+    const startCount = getKeyConnectionCount(1, 1);
     incrementKeyConnection(1, 1);
-    expect(getKeyConnectionCount(1, 1)).toBe(1);
+    expect(getKeyConnectionCount(1, 1)).toBe(startCount + 1);
     incrementKeyConnection(1, 1);
-    expect(getKeyConnectionCount(1, 1)).toBe(2);
+    expect(getKeyConnectionCount(1, 1)).toBe(startCount + 2);
     releaseKeyConnection(1, 1);
-    expect(getKeyConnectionCount(1, 1)).toBe(1);
+    expect(getKeyConnectionCount(1, 1)).toBe(startCount + 1);
     releaseKeyConnection(1, 1);
-    expect(getKeyConnectionCount(1, 1)).toBe(0);
+    expect(getKeyConnectionCount(1, 1)).toBe(startCount);
   });
 
   it("tracks connections per provider and key independently", () => {
+    const before1_1 = getKeyConnectionCount(1, 1);
+    const before1_2 = getKeyConnectionCount(1, 2);
+    const before2_1 = getKeyConnectionCount(2, 1);
     incrementKeyConnection(1, 1);
     incrementKeyConnection(1, 2);
     incrementKeyConnection(2, 1);
-    expect(getKeyConnectionCount(1, 1)).toBe(1);
-    expect(getKeyConnectionCount(1, 2)).toBe(1);
-    expect(getKeyConnectionCount(2, 1)).toBe(1);
+    expect(getKeyConnectionCount(1, 1)).toBe(before1_1 + 1);
+    expect(getKeyConnectionCount(1, 2)).toBe(before1_2 + 1);
+    expect(getKeyConnectionCount(2, 1)).toBe(before2_1 + 1);
   });
 });

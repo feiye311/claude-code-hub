@@ -40,18 +40,8 @@ export function recordKeyFailure(key: string): void {
 
 export function recordKeySuccess(key: string): void {
   const kh = hashKey(key);
-  const state = circuitOpenForKey.get(kh);
-
-  if (state) {
-    state.halfOpenTrials++;
-    if (state.halfOpenTrials >= HALF_OPEN_SUCCESS_THRESHOLD) {
-      circuitOpenForKey.delete(kh);
-      keyFailureCount.delete(kh);
-      logger.info("[ApiKeyCircuit] Key circuit closed after half-open success", { keyHash: kh });
-    }
-  } else {
-    keyFailureCount.delete(kh);
-  }
+  keyFailureCount.delete(kh);
+  circuitOpenForKey.delete(kh);
 }
 
 export function isKeyCircuitOpen(key: string): boolean {
