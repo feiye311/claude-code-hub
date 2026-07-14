@@ -231,23 +231,24 @@ export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionPro
 
       {/* Inline add form */}
       <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <Input
-              value={newKey}
-              onChange={(e) => setNewKey(e.target.value)}
-              placeholder={t("keyPlaceholder")}
-              className="font-mono text-sm"
-            />
-          </div>
-          <div className="w-20">
-            <Input
-              type="number"
-              min={1}
-              value={newWeight}
-              onChange={(e) => setNewWeight(Math.max(1, Number(e.target.value)))}
-              placeholder={t("weight")}
-            />
-          </div>
+        <div className="flex-1 space-y-1">
+          <label className="text-sm font-medium">{t("key")}</label>
+          <Input
+            value={newKey}
+            onChange={(e) => setNewKey(e.target.value)}
+            placeholder={t("keyPlaceholder")}
+            className="font-mono text-sm"
+          />
+        </div>
+        <div className="w-20 space-y-1">
+          <label className="text-sm font-medium">{t("weight")}</label>
+          <Input
+            type="number"
+            min={1}
+            value={newWeight}
+            onChange={(e) => setNewWeight(Math.max(1, Number(e.target.value)))}
+          />
+        </div>
           <Button
             size="sm"
             onClick={() => createMutation.mutate({ key: newKey, weight: newWeight })}
