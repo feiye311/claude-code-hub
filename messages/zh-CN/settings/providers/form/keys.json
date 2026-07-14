@@ -1,0 +1,27 @@
+{
+  "title": "API 密钥管理",
+  "addKey": "添加密钥",
+  "noKeys": "暂无 API 密钥",
+  "key": "密钥",
+  "keyPlaceholder": "输入 API Key",
+  "name": "名称",
+  "namePlaceholder": "主账号 / 备用",
+  "weight": "权重",
+  "enabled": "启用",
+  "circuit": "熔断状态",
+  "actions": "操作",
+  "confirm": "确认",
+  "resetCircuit": "恢复",
+  "createSuccess": "密钥创建成功",
+  "createError": "密钥创建失败",
+  "deleteSuccess": "密钥已删除",
+  "deleteError": "密钥删除失败",
+  "updateError": "密钥更新失败",
+  "resetSuccess": "熔断已恢复",
+  "resetError": "熔断恢复失败",
+  "circuit": {
+    "closed": "正常",
+    "open": "熔断中",
+    "half-open": "半开"
+  }
+}

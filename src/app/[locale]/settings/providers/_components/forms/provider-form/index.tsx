@@ -40,6 +40,7 @@ import { BasicInfoSection } from "./sections/basic-info-section";
 import { LimitsSection } from "./sections/limits-section";
 import { NetworkSection } from "./sections/network-section";
 import { OptionsSection } from "./sections/options-section";
+import { ProviderKeysSection } from "./sections/provider-keys-section";
 import { RoutingSection } from "./sections/routing-section";
 import { TestingSection } from "./sections/testing-section";
 
@@ -708,6 +709,13 @@ function ProviderFormContent({
             >
               <TestingSection />
             </div>
+
+            {/* Provider Keys Section (edit mode only) */}
+            {isEdit && provider?.id && (
+              <div className="px-6 py-4 border-t">
+                <ProviderKeysSection providerId={provider.id} />
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,0 +1,27 @@
+{
+  "title": "APIキー管理",
+  "addKey": "キー追加",
+  "noKeys": "APIキーがありません",
+  "key": "キー",
+  "keyPlaceholder": "APIキーを入力",
+  "name": "名称",
+  "namePlaceholder": "メイン / バックアップ",
+  "weight": "重み",
+  "enabled": "有効",
+  "circuit": "サーキット状態",
+  "actions": "操作",
+  "confirm": "確認",
+  "resetCircuit": "リセット",
+  "createSuccess": "キー作成成功",
+  "createError": "キー作成失敗",
+  "deleteSuccess": "キー削除完了",
+  "deleteError": "キー削除失敗",
+  "updateError": "キー更新失敗",
+  "resetSuccess": "サーキットリセット完了",
+  "resetError": "サーキットリセット失敗",
+  "circuit": {
+    "closed": "正常",
+    "open": "遮断中",
+    "half-open": "半開"
+  }
+}

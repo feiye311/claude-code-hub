@@ -1,0 +1,27 @@
+{
+  "title": "Управление ключами API",
+  "addKey": "Добавить ключ",
+  "noKeys": "Нет ключей API",
+  "key": "Ключ",
+  "keyPlaceholder": "Введите API ключ",
+  "name": "Название",
+  "namePlaceholder": "Основной / Резервный",
+  "weight": "Вес",
+  "enabled": "Включён",
+  "circuit": "Состояние цепи",
+  "actions": "Действия",
+  "confirm": "Подтвердить",
+  "resetCircuit": "Сброс",
+  "createSuccess": "Ключ создан",
+  "createError": "Ошибка создания ключа",
+  "deleteSuccess": "Ключ удалён",
+  "deleteError": "Ошибка удаления ключа",
+  "updateError": "Ошибка обновления ключа",
+  "resetSuccess": "Цепь сброшена",
+  "resetError": "Ошибка сброса цепи",
+  "circuit": {
+    "closed": "Закрыта",
+    "open": "Открыта",
+    "half-open": "Полуоткрыта"
+  }
+}

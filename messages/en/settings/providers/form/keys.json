@@ -1,0 +1,27 @@
+{
+  "title": "API Keys Management",
+  "addKey": "Add Key",
+  "noKeys": "No API keys",
+  "key": "Key",
+  "keyPlaceholder": "Enter API Key",
+  "name": "Name",
+  "namePlaceholder": "Primary / Backup",
+  "weight": "Weight",
+  "enabled": "Enabled",
+  "circuit": "Circuit State",
+  "actions": "Actions",
+  "confirm": "Confirm",
+  "resetCircuit": "Reset",
+  "createSuccess": "Key created successfully",
+  "createError": "Failed to create key",
+  "deleteSuccess": "Key deleted",
+  "deleteError": "Failed to delete key",
+  "updateError": "Failed to update key",
+  "resetSuccess": "Circuit reset successfully",
+  "resetError": "Failed to reset circuit",
+  "circuit": {
+    "closed": "Closed",
+    "open": "Open",
+    "half-open": "Half-Open"
+  }
+}

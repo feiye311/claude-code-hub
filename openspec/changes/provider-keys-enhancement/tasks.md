@@ -29,11 +29,11 @@
 
 ## 5. 前端 UI
 
-- [ ] 5.1 创建 ProviderKeysList 组件 (src/app/[locale]/dashboard/settings/providers/_components/provider-keys-list.tsx)
-- [ ] 5.2 添加 Key 表单支持权重和启用控制 (src/app/[locale]/dashboard/settings/providers/_components/provider-key-form.tsx)
-- [ ] 5.3 将 keys 列表集成到 provider 编辑表单 (src/app/[locale]/dashboard/settings/providers/_components/provider-form.tsx)
-- [ ] 5.4 展示 key 熔断状态及重置按钮 (src/app/[locale]/dashboard/settings/providers/_components/provider-key-circuit-status.tsx)
-- [ ] 5.5 添加 provider keys UI 的 i18n 消息 (messages/*/settings/providers/form/key.json)
+- [x] 5.1 创建 ProviderKeysList 组件 (src/app/[locale]/dashboard/settings/providers/_components/provider-keys-list.tsx)
+- [x] 5.2 添加 Key 表单支持权重和启用控制 (src/app/[locale]/dashboard/settings/providers/_components/provider-key-form.tsx)
+- [x] 5.3 将 keys 列表集成到 provider 编辑表单 (src/app/[locale]/dashboard/settings/providers/_components/provider-form.tsx)
+- [x] 5.4 展示 key 熔断状态及重置按钮 (src/app/[locale]/dashboard/settings/providers/_components/provider-key-circuit-status.tsx)
+- [x] 5.5 添加 provider keys UI 的 i18n 消息 (messages/*/settings/providers/form/keys.json)
 
 ## 6. 集成
 
