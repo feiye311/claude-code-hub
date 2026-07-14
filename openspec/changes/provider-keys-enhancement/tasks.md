@@ -19,13 +19,13 @@
 
 ## 4. REST API
 
-- [ ] 4.1 创建 provider keys router 和 handlers (src/app/api/v1/resources/provider-keys/)
-- [ ] 4.2 实现 list provider keys 端点 (GET /api/v1/providers/{id}/keys)
-- [ ] 4.3 实现 create provider key 端点 (POST /api/v1/providers/{id}/keys)
-- [ ] 4.4 实现 update provider key 端点 (PATCH /api/v1/providers/{providerId}/keys/{keyId})
-- [ ] 4.5 实现 delete provider key 端点 (DELETE /api/v1/providers/{providerId}/keys/{keyId})
-- [ ] 4.6 实现 reset key circuit 端点 (POST /api/v1/providers/{providerId}/keys/{keyId}/reset-circuit)
-- [ ] 4.7 添加 provider keys OpenAPI schemas (src/lib/api/v1/schemas/provider-keys.ts)
+- [x] 4.1 创建 provider keys router 和 handlers (src/app/api/v1/resources/provider-keys/)
+- [x] 4.2 实现 list provider keys 端点 (GET /api/v1/providers/{id}/keys)
+- [x] 4.3 实现 create provider key 端点 (POST /api/v1/providers/{id}/keys)
+- [x] 4.4 实现 update provider key 端点 (PATCH /api/v1/providers/{providerId}/keys/{keyId})
+- [x] 4.5 实现 delete provider key 端点 (DELETE /api/v1/providers/{providerId}/keys/{keyId})
+- [x] 4.6 实现 reset key circuit 端点 (POST /api/v1/providers/{providerId}/keys/{keyId}/reset-circuit)
+- [x] 4.7 添加 provider keys OpenAPI schemas (src/lib/api/v1/schemas/provider-keys.ts)
 
 ## 5. 前端 UI
 
