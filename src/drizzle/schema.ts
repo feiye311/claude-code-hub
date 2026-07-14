@@ -188,6 +188,7 @@ export const providerKeys = pgTable('provider_keys', {
   isEnabled: boolean('is_enabled').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => ({
   providerKeysProviderIdIdx: index('idx_provider_keys_provider_id').on(table.providerId),
 }));

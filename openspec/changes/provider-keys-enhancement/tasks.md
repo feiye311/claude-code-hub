@@ -2,12 +2,12 @@
 
 - [x] 1.1 在 drizzle schema 中添加 provider_keys 表 (src/drizzle/schema.ts)
 - [x] 1.2 生成并验证迁移文件 (drizzle/)
-- [ ] 1.3 创建现有 providers.key 数据迁移脚本 (scripts/migrate-provider-keys.ts)
+- [x] 1.3 创建现有 providers.key 数据迁移脚本 (scripts/migrate-provider-keys.ts)
 
 ## 2. Repository 层
 
-- [ ] 2.1 创建 providerKeys repository 及 CRUD 操作 (src/repository/provider-keys.ts)
-- [ ] 2.2 在 schema 中添加 provider key relations (src/drizzle/schema.ts)
+- [x] 2.1 创建 providerKeys repository 及 CRUD 操作 (src/repository/provider-keys.ts)
+- [x] 2.2 在 schema 中添加 provider key relations (src/drizzle/schema.ts)
 - [ ] 2.3 更新 provider repository 包含 keys relation (src/repository/provider.ts)
 
 ## 3. 负载均衡逻辑
