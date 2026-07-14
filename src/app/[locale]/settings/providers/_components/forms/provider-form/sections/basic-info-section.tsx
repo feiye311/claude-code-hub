@@ -5,6 +5,7 @@ import { ExternalLink, Globe, Key, Link2, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef } from "react";
 import { ProviderKeysSection } from "./provider-keys-section";
+import { ProviderEndpointsSection } from "@/app/[locale]/settings/providers/_components/provider-endpoints-table";
 import { InlineWarning } from "@/components/ui/inline-warning";
 import { Input } from "@/components/ui/input";
 import {
