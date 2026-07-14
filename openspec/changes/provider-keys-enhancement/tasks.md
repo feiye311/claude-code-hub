@@ -37,9 +37,9 @@
 
 ## 6. 集成
 
-- [ ] 6.1 更新 forwarder 使用新的 selectAvailableKey 逻辑 (src/app/v1/_lib/proxy/forwarder.ts)
-- [ ] 6.2 更新 provider selector 查询 provider_keys 表 (src/app/v1/_lib/proxy/provider-selector.ts)
-- [ ] 6.3 添加启动时 provider_keys 表迁移检查 (src/lib/startup-migration.ts)
+- [x] 6.1 更新 forwarder 使用新的 selectAvailableKey 逻辑 (src/app/v1/_lib/proxy/forwarder.ts)
+- [x] 6.2 更新 provider selector 查询 provider_keys 表 (src/app/v1/_lib/proxy/provider-selector.ts)
+- [x] 6.3 添加启动时 provider_keys 表迁移检查 (src/instrumentation.ts)
 
 ## 7. 测试
 

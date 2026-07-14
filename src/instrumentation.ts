@@ -515,7 +515,16 @@ export async function register() {
 
         if (!autoMigrateDisabled) {
           await runMigrations();
-        } else {
+// 迁移 provider keys 数据（幂等）
+        try {
+          const { migrateProviderKeys } = await import("@/scripts/migrate-provider-keys");
+          await migrateProviderKeys();
+        } catch (error) {
+          logger.warn("[Instrumentation] Failed to migrate provider keys", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      } else {
           logger.info("[Instrumentation] AUTO_MIGRATE disabled: skipping migrations", {
             value: process.env.AUTO_MIGRATE,
           });
