@@ -160,6 +160,10 @@ export async function deleteProviderKey(id: number): Promise<boolean> {
   return true;
 }
 
+export async function getProviderKeysByProviderId(providerId: number): Promise<ProviderKey[]> {
+  return listProviderKeys(providerId);
+}
+
 export async function getProviderKeysByProviderIds(
   providerIds: number[]
 ): Promise<Map<number, ProviderKey[]>> {

@@ -12,10 +12,10 @@
 
 ## 3. 负载均衡逻辑
 
-- [ ] 3.1 重构 selectAvailableKey 使用权重比算法 (src/lib/api-key-circuit.ts)
-- [ ] 3.2 添加 Key 级熔断状态管理 (src/lib/api-key-circuit.ts)
-- [ ] 3.3 实现手动熔断恢复功能 (src/lib/api-key-circuit.ts)
-- [ ] 3.4 添加熔断状态查询函数 (src/lib/api-key-circuit.ts)
+- [x] 3.1 重构 selectAvailableKey 使用权重比算法 (src/lib/api-key-circuit.ts)
+- [x] 3.2 添加 Key 级熔断状态管理 (src/lib/api-key-circuit.ts)
+- [x] 3.3 实现手动熔断恢复功能 (src/lib/api-key-circuit.ts)
+- [x] 3.4 添加熔断状态查询函数 (src/lib/api-key-circuit.ts)
 
 ## 4. REST API
 

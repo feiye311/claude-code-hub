@@ -58,6 +58,7 @@ import {
   incrementKeyConnection,
   releaseKeyConnection,
 } from "@/lib/api-key-circuit";
+import { getProviderKeysByProviderId } from "@/repository/provider-keys";
 import {
   evaluateResponsesWsEligibility,
   getResponsesWsSessionId,
@@ -1438,13 +1439,12 @@ export class ProxyForwarder {
           endpointUrl: sanitizeUrl(activeEndpoint.baseUrl),
         };
 
-        // 最少连接策略：选出当前活跃连接最少的可用 key
-        const providerKeys = Array.isArray(currentProvider.key)
-          ? currentProvider.key
-          : [currentProvider.key];
-        const selectedKey = selectAvailableKey(providerKeys, currentProvider.id);
-        const outboundKey = selectedKey?.key ?? (providerKeys[0] ?? "");
-        const outboundKeyIndex = selectedKey?.index ?? 0;
+        const providerKeys = await getProviderKeysByProviderId(currentProvider.id);
+        const selectedKey = providerKeys.length > 0
+          ? selectAvailableKey(providerKeys, currentProvider.id)
+          : null;
+        const outboundKey = selectedKey?.key ?? (Array.isArray(currentProvider.key) ? (currentProvider.key[0] ?? "") : (currentProvider.key ?? ""));
+        const outboundKeyIndex = selectedKey?.keyId ?? 0;
         incrementKeyConnection(currentProvider.id, outboundKeyIndex);
 
         try {
@@ -4194,13 +4194,13 @@ export class ProxyForwarder {
           ? { ...attempt.provider, firstByteTimeoutStreamingMs: 0 }
           : attempt.provider;
 
-      // 最少连接策略选 key
-      const hedgeKeys = Array.isArray(attempt.provider.key)
-        ? attempt.provider.key
-        : [attempt.provider.key];
-      const hedgeSelected = selectAvailableKey(hedgeKeys, attempt.provider.id);
-      const hedgeOutboundKey = hedgeSelected?.key ?? (hedgeKeys[0] ?? "");
-      const hedgeKeyIndex = hedgeSelected?.index ?? 0;
+      // 权重比策略选 key
+      const hedgeKeys = await getProviderKeysByProviderId(attempt.provider.id);
+      const hedgeSelected = hedgeKeys.length > 0
+        ? selectAvailableKey(hedgeKeys, attempt.provider.id)
+        : null;
+      const hedgeOutboundKey = hedgeSelected?.key ?? (Array.isArray(attempt.provider.key) ? (attempt.provider.key[0] ?? "") : (attempt.provider.key ?? ""));
+      const hedgeKeyIndex = hedgeSelected?.keyId ?? 0;
       incrementKeyConnection(attempt.provider.id, hedgeKeyIndex);
 
       void ProxyForwarder.doForward(

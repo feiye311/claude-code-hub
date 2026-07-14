@@ -1,76 +1,105 @@
 import { logger } from "@/lib/logger";
+import type { ProviderKey } from "@/repository/provider-keys";
 
-// key 熔断状态：keyHash -> { until (ms timestamp) }
-const circuitOpenForKey = new Map<string, number>();
-const KEY_CIRCUIT_OPEN_DURATION_MS = 300_000; // 5 分钟
+// Circuit state: keyHash -> { until, halfOpenTrials }
+interface CircuitState {
+  until: number;
+  halfOpenTrials: number;
+}
+
+// key 熔断状态
+const circuitOpenForKey = new Map<string, CircuitState>();
+const KEY_CIRCUIT_OPEN_DURATION_MS = 300_000;
 const MAX_KEY_FAILURES = 3;
+const HALF_OPEN_SUCCESS_THRESHOLD = 2;
 const keyFailureCount = new Map<string, number>();
 
-// 活跃连接计数：`${providerId}:${keyIndex}` -> count
+// 活跃连接计数：`${providerId}:${keyId}` -> count
 const keyConnectionCount = new Map<string, number>();
 
 function hashKey(key: string): string {
-  // 取 key 前 8 位 + 长度作为标识，避免暴露完整 key
   return `${key.substring(0, 8)}:${key.length}`;
 }
 
-function connKey(providerId: number, keyIndex: number): string {
-  return `${providerId}:${keyIndex}`;
+function connKey(providerId: number, keyId: number): string {
+  return `${providerId}:${keyId}`;
 }
 
-/**
- * 标记某个 key 调用失败（增加失败计数，达到阈值后熔断）
- */
 export function recordKeyFailure(key: string): void {
   const kh = hashKey(key);
   const count = (keyFailureCount.get(kh) ?? 0) + 1;
   keyFailureCount.set(kh, count);
 
   if (count >= MAX_KEY_FAILURES) {
-    circuitOpenForKey.set(kh, Date.now() + KEY_CIRCUIT_OPEN_DURATION_MS);
+    circuitOpenForKey.set(kh, { until: Date.now() + KEY_CIRCUIT_OPEN_DURATION_MS, halfOpenTrials: 0 });
     logger.warn("[ApiKeyCircuit] Key circuit opened", { keyHash: kh, failures: count });
   } else {
     logger.debug("[ApiKeyCircuit] Key failure recorded", { keyHash: kh, failures: count });
   }
 }
 
-/**
- * 标记某个 key 调用成功（重置失败计数和熔断）
- */
 export function recordKeySuccess(key: string): void {
   const kh = hashKey(key);
-  keyFailureCount.delete(kh);
-  circuitOpenForKey.delete(kh);
+  const state = circuitOpenForKey.get(kh);
+
+  if (state) {
+    state.halfOpenTrials++;
+    if (state.halfOpenTrials >= HALF_OPEN_SUCCESS_THRESHOLD) {
+      circuitOpenForKey.delete(kh);
+      keyFailureCount.delete(kh);
+      logger.info("[ApiKeyCircuit] Key circuit closed after half-open success", { keyHash: kh });
+    }
+  } else {
+    keyFailureCount.delete(kh);
+  }
 }
 
-/**
- * 判断某个 key 是否处于熔断状态
- */
 export function isKeyCircuitOpen(key: string): boolean {
   const kh = hashKey(key);
-  const until = circuitOpenForKey.get(kh);
-  if (!until) return false;
-  if (Date.now() > until) {
-    circuitOpenForKey.delete(kh);
-    keyFailureCount.delete(kh);
+  const state = circuitOpenForKey.get(kh);
+  if (!state) return false;
+  if (Date.now() > state.until) {
     return false;
   }
   return true;
 }
 
-/**
- * 增加某个 key 的活跃连接计数
- */
-export function incrementKeyConnection(providerId: number, keyIndex: number): void {
-  const k = connKey(providerId, keyIndex);
+export function getKeyCircuitState(key: string): "closed" | "open" | "half-open" {
+  const kh = hashKey(key);
+  const state = circuitOpenForKey.get(kh);
+  if (!state) return "closed";
+  if (Date.now() > state.until) return "half-open";
+  return "open";
+}
+
+export function resetKeyCircuit(key: string): void {
+  const kh = hashKey(key);
+  circuitOpenForKey.delete(kh);
+  keyFailureCount.delete(kh);
+  logger.info("[ApiKeyCircuit] Key circuit manually reset", { keyHash: kh });
+}
+
+export function getKeyCircuitInfo(key: string): {
+  state: "closed" | "open" | "half-open";
+  failures: number;
+  until?: number;
+} {
+  const kh = hashKey(key);
+  const state = circuitOpenForKey.get(kh);
+  const failures = keyFailureCount.get(kh) ?? 0;
+
+  if (!state) return { state: "closed", failures };
+  if (Date.now() > state.until) return { state: "half-open", failures };
+  return { state: "open", failures, until: state.until };
+}
+
+export function incrementKeyConnection(providerId: number, keyId: number): void {
+  const k = connKey(providerId, keyId);
   keyConnectionCount.set(k, (keyConnectionCount.get(k) ?? 0) + 1);
 }
 
-/**
- * 释放某个 key 的活跃连接计数
- */
-export function releaseKeyConnection(providerId: number, keyIndex: number): void {
-  const k = connKey(providerId, keyIndex);
+export function releaseKeyConnection(providerId: number, keyId: number): void {
+  const k = connKey(providerId, keyId);
   const count = keyConnectionCount.get(k);
   if (count === undefined) return;
   if (count <= 1) {
@@ -80,76 +109,63 @@ export function releaseKeyConnection(providerId: number, keyIndex: number): void
   }
 }
 
-/**
- * 获取某个 key 的当前活跃连接数
- */
-export function getKeyConnectionCount(providerId: number, keyIndex: number): number {
-  return keyConnectionCount.get(connKey(providerId, keyIndex)) ?? 0;
+export function getKeyConnectionCount(providerId: number, keyId: number): number {
+  return keyConnectionCount.get(connKey(providerId, keyId)) ?? 0;
 }
 
-/**
- * 从 key 数组中按"最少连接"策略选出一个可用（未熔断）的 key。
- *
- * 遍历所有 key，选择当前活跃连接数最少的未熔断 key，
- * 确保请求均匀分布到各个 key 上。
- *
- * 注意：调用方在确定使用返回的 key 后需调用 incrementKeyConnection，
- * 在请求结束后调用 releaseKeyConnection。
- *
- * 返回 { key, index }，如果没有可用 key 则返回 null。
- */
 export function selectAvailableKey(
-  keys: string[],
+  keys: ProviderKey[],
   providerId: number
-): { key: string; index: number } | null {
+): { key: string; keyId: number } | null {
   if (!keys || keys.length === 0) return null;
 
-  let bestIdx = -1;
-  let bestCount = Infinity;
+  const enabledKeys = keys.filter((k) => k.isEnabled && !isKeyCircuitOpen(k.key));
 
-  for (let i = 0; i < keys.length; i++) {
-    const candidate = keys[i]?.trim();
-    if (!candidate) continue;
-    if (isKeyCircuitOpen(candidate)) continue;
+  if (enabledKeys.length > 0) {
+    let bestKey: ProviderKey | null = null;
+    let bestRatio = Infinity;
 
-    const count = getKeyConnectionCount(providerId, i);
-    if (count < bestCount) {
-      bestCount = count;
-      bestIdx = i;
+    for (const k of enabledKeys) {
+      const connections = getKeyConnectionCount(providerId, k.id);
+      const ratio = connections / k.weight;
+      if (ratio < bestRatio) {
+        bestRatio = ratio;
+        bestKey = k;
+      }
+    }
+
+    if (bestKey) {
+      return { key: bestKey.key, keyId: bestKey.id };
     }
   }
 
-  if (bestIdx >= 0) {
-    return { key: keys[bestIdx].trim(), index: bestIdx };
-  }
+  const fallbackKeys = keys.filter((k) => k.isEnabled);
+  if (fallbackKeys.length > 0) {
+    let bestKey: ProviderKey | null = null;
+    let bestRatio = Infinity;
 
-  // 全部熔断：选连接数最少的兜底
-  bestCount = Infinity;
-  for (let i = 0; i < keys.length; i++) {
-    const candidate = keys[i]?.trim();
-    if (!candidate) continue;
-    const count = getKeyConnectionCount(providerId, i);
-    if (count < bestCount) {
-      bestCount = count;
-      bestIdx = i;
+    for (const k of fallbackKeys) {
+      const connections = getKeyConnectionCount(providerId, k.id);
+      const ratio = connections / k.weight;
+      if (ratio < bestRatio) {
+        bestRatio = ratio;
+        bestKey = k;
+      }
     }
-  }
 
-  if (bestIdx >= 0) {
-    logger.warn("[ApiKeyCircuit] All keys circuit-open, falling back to least-connections key", {
-      providerId,
-      fallbackIndex: bestIdx,
-      activeConnections: bestCount,
-    });
-    return { key: keys[bestIdx].trim(), index: bestIdx };
+    if (bestKey) {
+      logger.warn("[ApiKeyCircuit] All keys circuit-open, falling back to least-ratio key", {
+        providerId,
+        fallbackKeyId: bestKey.id,
+        activeConnections: getKeyConnectionCount(providerId, bestKey.id),
+      });
+      return { key: bestKey.key, keyId: bestKey.id };
+    }
   }
 
   return null;
 }
 
-/**
- * 规范化 key 字段：兼容旧数据的字符串格式，自动去重
- */
 export function normalizeKeys(keyField: unknown): string[] {
   if (Array.isArray(keyField)) {
     const seen = new Set<string>();
