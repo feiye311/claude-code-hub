@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { useProviderForm } from "../provider-form-context";
 
 interface ProviderKey {
   id: number;
@@ -39,6 +40,11 @@ interface ProviderKeysSectionProps {
   mode: "create" | "edit" | "batch";
 }
 
+interface LocalKey {
+  key: string;
+  weight: number;
+}
+
 function CircuitBadge({ state }: { state: ProviderKey["circuit"]["state"] }) {
   const t = useTranslations("settings.providers.form.keys");
   const variants: Record<string, string> = {
@@ -56,10 +62,12 @@ function CircuitBadge({ state }: { state: ProviderKey["circuit"]["state"] }) {
 export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionProps) {
   const t = useTranslations("settings.providers.form.keys");
   const queryClient = useQueryClient();
+  const { dispatch } = useProviderForm();
   const isEdit = mode === "edit";
 
   const [newKey, setNewKey] = useState("");
   const [newWeight, setNewWeight] = useState(1);
+  const [localKeys, setLocalKeys] = useState<LocalKey[]>([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["provider-keys", providerId],
@@ -151,83 +159,149 @@ export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionPro
     onError: () => toast.error(t("resetError")),
   });
 
-  const keys = isEdit ? (data ?? []) : [];
+  // Create mode: add to local state and sync to form context
+  function handleAddLocal() {
+    const trimmed = newKey.trim();
+    if (!trimmed) return;
+    const updated = [...localKeys, { key: trimmed, weight: newWeight }];
+    setLocalKeys(updated);
+    dispatch({ type: "SET_KEY", payload: updated.map((k) => k.key).join("\n") });
+    setNewKey("");
+    setNewWeight(1);
+  }
+
+  function handleDeleteLocal(idx: number) {
+    const updated = localKeys.filter((_, i) => i !== idx);
+    setLocalKeys(updated);
+    dispatch({ type: "SET_KEY", payload: updated.map((k) => k.key).join("\n") });
+  }
 
   if (isEdit && isLoading) {
     return <Loader2 className="h-4 w-4 animate-spin" />;
   }
 
+  const editKeys = isEdit ? (data ?? []) : [];
+
   return (
     <div className="space-y-3">
-      {keys.length > 0 ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("key")}</TableHead>
-              <TableHead>{t("weight")}</TableHead>
-              <TableHead>{t("enabled")}</TableHead>
-              <TableHead>{t("circuit")}</TableHead>
-              <TableHead>{t("actions")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {keys.map((k) => (
-              <TableRow key={k.id}>
-                <TableCell className="font-mono text-xs max-w-[200px] truncate">
-                  {k.key}
-                </TableCell>
-                <TableCell>
-                  <Input
-                    type="number"
-                    min={1}
-                    className="h-8 w-20"
-                    value={k.weight}
-                    onChange={(e) => {
-                      const w = Math.max(1, Number(e.target.value));
-                      weightMutation.mutate({ keyId: k.id, weight: w });
-                    }}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Switch
-                    checked={k.isEnabled}
-                    onCheckedChange={(checked) =>
-                      toggleMutation.mutate({ keyId: k.id, isEnabled: checked })
-                    }
-                  />
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <CircuitBadge state={k.circuit.state} />
-                    {k.circuit.state !== "closed" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => resetCircuitMutation.mutate(k.id)}
-                        disabled={resetCircuitMutation.isPending}
-                      >
-                        {t("resetCircuit")}
-                      </Button>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteMutation.mutate(k.id)}
-                    disabled={deleteMutation.isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
+      {/* Key list */}
+      {isEdit ? (
+        editKeys.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("key")}</TableHead>
+                <TableHead>{t("weight")}</TableHead>
+                <TableHead>{t("enabled")}</TableHead>
+                <TableHead>{t("circuit")}</TableHead>
+                <TableHead>{t("actions")}</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      ) : isEdit ? (
-        <p className="text-sm text-muted-foreground">{t("noKeys")}</p>
-      ) : null}
+            </TableHeader>
+            <TableBody>
+              {editKeys.map((k) => (
+                <TableRow key={k.id}>
+                  <TableCell className="font-mono text-xs max-w-[200px] truncate">
+                    {k.key}
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min={1}
+                      className="h-8 w-20"
+                      value={k.weight}
+                      onChange={(e) => {
+                        const w = Math.max(1, Number(e.target.value));
+                        weightMutation.mutate({ keyId: k.id, weight: w });
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={k.isEnabled}
+                      onCheckedChange={(checked) =>
+                        toggleMutation.mutate({ keyId: k.id, isEnabled: checked })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <CircuitBadge state={k.circuit.state} />
+                      {k.circuit.state !== "closed" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => resetCircuitMutation.mutate(k.id)}
+                          disabled={resetCircuitMutation.isPending}
+                        >
+                          {t("resetCircuit")}
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteMutation.mutate(k.id)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <p className="text-sm text-muted-foreground">{t("noKeys")}</p>
+        )
+      ) : (
+        // Create mode: local keys table
+        localKeys.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("key")}</TableHead>
+                <TableHead>{t("weight")}</TableHead>
+                <TableHead>{t("actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {localKeys.map((k, idx) => (
+                <TableRow key={idx}>
+                  <TableCell className="font-mono text-xs max-w-[200px] truncate">
+                    {k.key}
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      min={1}
+                      className="h-8 w-20"
+                      value={k.weight}
+                      onChange={(e) => {
+                        const w = Math.max(1, Number(e.target.value));
+                        const updated = localKeys.map((item, i) =>
+                          i === idx ? { ...item, weight: w } : item
+                        );
+                        setLocalKeys(updated);
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteLocal(idx)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : null
+      )}
 
       {/* Inline add form */}
       <div className="flex items-end gap-2">
@@ -238,6 +312,12 @@ export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionPro
             onChange={(e) => setNewKey(e.target.value)}
             placeholder={t("keyPlaceholder")}
             className="font-mono text-sm"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                isEdit ? createMutation.mutate({ key: newKey, weight: newWeight }) : handleAddLocal();
+              }
+            }}
           />
         </div>
         <div className="w-20 space-y-1">
@@ -249,19 +329,23 @@ export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionPro
             onChange={(e) => setNewWeight(Math.max(1, Number(e.target.value)))}
           />
         </div>
-          <Button
-            size="sm"
-            onClick={() => createMutation.mutate({ key: newKey, weight: newWeight })}
-            disabled={!newKey.trim() || createMutation.isPending}
-          >
-            {createMutation.isPending ? (
-              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="mr-1 h-4 w-4" />
-            )}
-            {t("addKey")}
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          onClick={() =>
+            isEdit
+              ? createMutation.mutate({ key: newKey, weight: newWeight })
+              : handleAddLocal()
+          }
+          disabled={!newKey.trim() || (isEdit && createMutation.isPending)}
+        >
+          {isEdit && createMutation.isPending ? (
+            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+          ) : (
+            <Plus className="mr-1 h-4 w-4" />
+          )}
+          {t("addKey")}
+        </Button>
+      </div>
     </div>
   );
 }
