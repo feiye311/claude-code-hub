@@ -517,7 +517,7 @@ export async function register() {
           await runMigrations();
 // 迁移 provider keys 数据（幂等）
         try {
-          const { migrateProviderKeys } = await import("@/scripts/migrate-provider-keys");
+          const { migrateProviderKeys } = await import("@/../scripts/migrate-provider-keys");
           await migrateProviderKeys();
         } catch (error) {
           logger.warn("[Instrumentation] Failed to migrate provider keys", {

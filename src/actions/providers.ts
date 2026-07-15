@@ -531,6 +531,7 @@ export async function addProvider(data: {
   name: string;
   url: string;
   key: string;
+  keys?: { key: string; weight: number }[];
   is_enabled?: boolean;
   weight?: number;
   priority?: number;
@@ -674,6 +675,32 @@ export async function addProvider(data: {
       providerId: provider.id,
     });
 
+    // 同步 provider_keys 表
+    if (data.keys && data.keys.length > 0) {
+      try {
+        const { createProviderKey } = await import("@/repository/provider-keys");
+        for (const k of data.keys) {
+          if (k.key.trim()) {
+            await createProviderKey({
+              providerId: provider.id,
+              key: k.key.trim(),
+              weight: k.weight || 1,
+              isEnabled: true,
+            });
+          }
+        }
+        logger.debug("addProvider:provider_keys_synced", {
+          providerId: provider.id,
+          keyCount: data.keys.length,
+        });
+      } catch (error) {
+        logger.warn("addProvider:provider_keys_sync_failed", {
+          providerId: provider.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
     // 同步 provider_groups 表（系统级，失败不影响主流程）
     try {
       await ensureProviderGroupsExist(parseProviderGroups(payload.group_tag));
@@ -746,6 +773,7 @@ export async function editProvider(
     name?: string;
     url?: string;
     key?: string;
+    keys?: { key: string; weight: number }[];
     is_enabled?: boolean;
     weight?: number;
     priority?: number;
@@ -877,6 +905,36 @@ export async function editProvider(
 
     if (!provider) {
       return { ok: false, error: "供应商不存在" };
+    }
+
+    // 同步 provider_keys 表（编辑模式下提供 keys 数组时重建）
+    if (data.keys !== undefined) {
+      try {
+        const { listProviderKeys, deleteProviderKey, createProviderKey } = await import("@/repository/provider-keys");
+        const existingKeys = await listProviderKeys(providerId);
+        for (const ek of existingKeys) {
+          await deleteProviderKey(ek.id);
+        }
+        for (const k of data.keys) {
+          if (k.key.trim()) {
+            await createProviderKey({
+              providerId,
+              key: k.key.trim(),
+              weight: k.weight || 1,
+              isEnabled: true,
+            });
+          }
+        }
+        logger.debug("editProvider:provider_keys_synced", {
+          providerId,
+          keyCount: data.keys.length,
+        });
+      } catch (error) {
+        logger.warn("editProvider:provider_keys_sync_failed", {
+          providerId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
     // 同步 provider_groups 表（系统级，失败不影响主流程）

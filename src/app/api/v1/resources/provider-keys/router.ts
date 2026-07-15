@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { notFound, serverError } from "@/lib/api/v1/_shared/error-envelope";
+import { createProblemResponse, fromZodError } from "@/lib/api/v1/_shared/error-envelope";
 import { requireAuth } from "@/lib/api/v1/_shared/auth-middleware";
 import { ProblemJsonSchema } from "@/lib/api/v1/schemas/_common";
 import {
@@ -37,18 +37,14 @@ const problemResponses = {
 export const providerKeysRouter = new OpenAPIHono({
   defaultHook: (result, c) => {
     if (!result.success) {
-      return c.json(
-        {
-          type: "about:blank",
-          title: "Bad Request",
-          status: 400,
-          detail: result.error.errors.map((e) => e.message).join("; "),
-        },
-        400
-      );
+      return fromZodError(result.error, new URL(c.req.url).pathname);
     }
   },
 });
+
+function notFound(c: any, detail: string) {
+  return c.json(createProblemResponse({ status: 404, detail }), 404);
+}
 
 // GET /providers/{providerId}/keys
 providerKeysRouter.openapi(

@@ -4195,24 +4195,23 @@ export class ProxyForwarder {
           : attempt.provider;
 
       // 权重比策略选 key
-      const hedgeKeys = await getProviderKeysByProviderId(attempt.provider.id);
-      const hedgeSelected = hedgeKeys.length > 0
-        ? selectAvailableKey(hedgeKeys, attempt.provider.id)
-        : null;
-      const hedgeOutboundKey = hedgeSelected?.key ?? (Array.isArray(attempt.provider.key) ? (attempt.provider.key[0] ?? "") : (attempt.provider.key ?? ""));
-      const hedgeKeyIndex = hedgeSelected?.keyId ?? 0;
-      incrementKeyConnection(attempt.provider.id, hedgeKeyIndex);
+      getProviderKeysByProviderId(attempt.provider.id).then((hedgeKeys) => {
+        const hedgeSelected = hedgeKeys.length > 0
+          ? selectAvailableKey(hedgeKeys, attempt.provider.id)
+          : null;
+        const hedgeOutboundKey = hedgeSelected?.key ?? (Array.isArray(attempt.provider.key) ? (attempt.provider.key[0] ?? "") : (attempt.provider.key ?? ""));
+        const hedgeKeyIndex = hedgeSelected?.keyId ?? 0;
+        incrementKeyConnection(attempt.provider.id, hedgeKeyIndex);
 
-      void ProxyForwarder.doForward(
-        attempt.session,
-        providerForRequest,
-        attempt.baseUrl,
-        attempt.endpointAudit,
-        attempt.requestAttemptCount,
-        hedgeOutboundKey,
-        true
-      )
-        .then(async (response) => {
+        return ProxyForwarder.doForward(
+          attempt.session,
+          providerForRequest,
+          attempt.baseUrl,
+          attempt.endpointAudit,
+          attempt.requestAttemptCount,
+          hedgeOutboundKey,
+          true
+        ).then(async (response) => {
           if (settled || winnerCommitted || attempt.settled) {
             const attemptRuntime = attempt.session as ProxySessionWithAttemptRuntime;
             attempt.releaseAgent = attemptRuntime.releaseAgent ?? attempt.releaseAgent;
@@ -4313,6 +4312,7 @@ export class ProxyForwarder {
         })
         .finally(() => {
           releaseKeyConnection(attempt.provider.id, hedgeKeyIndex);
+        });
         });
     };
 

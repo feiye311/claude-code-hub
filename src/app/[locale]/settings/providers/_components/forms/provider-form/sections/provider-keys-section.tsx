@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useProviderForm } from "../provider-form-context";
+import type { ProviderKeyInput } from "../provider-form-types";
 
 interface ProviderKey {
   id: number;
@@ -40,11 +41,6 @@ interface ProviderKeysSectionProps {
   mode: "create" | "edit" | "batch";
 }
 
-interface LocalKey {
-  key: string;
-  weight: number;
-}
-
 function CircuitBadge({ state }: { state: ProviderKey["circuit"]["state"] }) {
   const t = useTranslations("settings.providers.form.keys");
   const variants: Record<string, string> = {
@@ -62,12 +58,11 @@ function CircuitBadge({ state }: { state: ProviderKey["circuit"]["state"] }) {
 export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionProps) {
   const t = useTranslations("settings.providers.form.keys");
   const queryClient = useQueryClient();
-  const { dispatch } = useProviderForm();
+  const { state, dispatch } = useProviderForm();
   const isEdit = mode === "edit";
 
   const [newKey, setNewKey] = useState("");
   const [newWeight, setNewWeight] = useState(1);
-  const [localKeys, setLocalKeys] = useState<LocalKey[]>([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["provider-keys", providerId],
@@ -159,21 +154,26 @@ export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionPro
     onError: () => toast.error(t("resetError")),
   });
 
-  // Create mode: add to local state and sync to form context
+  // Create mode: operate on form context state
   function handleAddLocal() {
     const trimmed = newKey.trim();
     if (!trimmed) return;
-    const updated = [...localKeys, { key: trimmed, weight: newWeight }];
-    setLocalKeys(updated);
-    dispatch({ type: "SET_KEY", payload: updated.map((k) => k.key).join("\n") });
+    const updated = [...state.basic.providerKeys, { key: trimmed, weight: newWeight }];
+    dispatch({ type: "SET_PROVIDER_KEYS", payload: updated });
     setNewKey("");
     setNewWeight(1);
   }
 
   function handleDeleteLocal(idx: number) {
-    const updated = localKeys.filter((_, i) => i !== idx);
-    setLocalKeys(updated);
-    dispatch({ type: "SET_KEY", payload: updated.map((k) => k.key).join("\n") });
+    const updated = state.basic.providerKeys.filter((_, i) => i !== idx);
+    dispatch({ type: "SET_PROVIDER_KEYS", payload: updated });
+  }
+
+  function handleWeightLocal(idx: number, weight: number) {
+    const updated = state.basic.providerKeys.map((item, i) =>
+      i === idx ? { ...item, weight: Math.max(1, weight) } : item
+    );
+    dispatch({ type: "SET_PROVIDER_KEYS", payload: updated });
   }
 
   if (isEdit && isLoading) {
@@ -181,6 +181,7 @@ export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionPro
   }
 
   const editKeys = isEdit ? (data ?? []) : [];
+  const createKeys = !isEdit ? state.basic.providerKeys : [];
 
   return (
     <div className="space-y-3">
@@ -257,7 +258,7 @@ export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionPro
         )
       ) : (
         // Create mode: local keys table
-        localKeys.length > 0 ? (
+        createKeys.length > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>
@@ -267,7 +268,7 @@ export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionPro
               </TableRow>
             </TableHeader>
             <TableBody>
-              {localKeys.map((k, idx) => (
+              {createKeys.map((k, idx) => (
                 <TableRow key={idx}>
                   <TableCell className="font-mono text-xs max-w-[200px] truncate">
                     {k.key}
@@ -278,13 +279,7 @@ export function ProviderKeysSection({ providerId, mode }: ProviderKeysSectionPro
                       min={1}
                       className="h-8 w-20"
                       value={k.weight}
-                      onChange={(e) => {
-                        const w = Math.max(1, Number(e.target.value));
-                        const updated = localKeys.map((item, i) =>
-                          i === idx ? { ...item, weight: w } : item
-                        );
-                        setLocalKeys(updated);
-                      }}
+                      onChange={(e) => handleWeightLocal(idx, Number(e.target.value))}
                     />
                   </TableCell>
                   <TableCell>

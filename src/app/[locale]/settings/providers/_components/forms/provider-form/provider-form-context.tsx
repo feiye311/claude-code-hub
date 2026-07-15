@@ -147,7 +147,7 @@ export function createInitialState(
     const analysis = analyzeBatchProviderSettings(batchProviders);
 
     return {
-      basic: { name: "", url: "", key: "", websiteUrl: "" },
+      basic: { name: "", url: "", key: "", websiteUrl: "", providerKeys: [] },
       routing: {
         providerType: "claude", // 批量编辑不支持修改 providerType
         groupTag:
@@ -345,7 +345,7 @@ export function createInitialState(
   // Batch mode fallback: all fields start at neutral defaults (no provider source)
   if (isBatch) {
     return {
-      basic: { name: "", url: "", key: "", websiteUrl: "" },
+      basic: { name: "", url: "", key: "", websiteUrl: "", providerKeys: [] },
       routing: {
         providerType: "claude",
         groupTag: [],
@@ -421,10 +421,11 @@ export function createInitialState(
           ? `${cloneProvider.name}_Copy`
           : (preset?.name ?? ""),
       url: cloneSafeUrlValue(sourceProvider?.url ?? preset?.url, isClone),
-key: isEdit && sourceProvider?.keys
-        ? (sourceProvider.keys as string[]).join("\n")
-        : "",
+      key: "",
       websiteUrl: cloneSafeUrlValue(sourceProvider?.websiteUrl ?? preset?.websiteUrl, isClone),
+      providerKeys: isEdit && sourceProvider?.keys
+        ? (sourceProvider.keys as string[]).map((k) => ({ key: k, weight: 1 }))
+        : [],
     },
     routing: {
       providerType: sourceProvider?.providerType ?? preset?.providerType ?? "claude",
@@ -526,6 +527,8 @@ export function providerFormReducer(
       return { ...state, basic: { ...state.basic, url: action.payload } };
     case "SET_KEY":
       return { ...state, basic: { ...state.basic, key: action.payload } };
+    case "SET_PROVIDER_KEYS":
+      return { ...state, basic: { ...state.basic, providerKeys: action.payload } };
     case "SET_WEBSITE_URL":
       return { ...state, basic: { ...state.basic, websiteUrl: action.payload } };
 

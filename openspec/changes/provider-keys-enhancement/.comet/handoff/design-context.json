@@ -1,0 +1,16 @@
+{
+  "change": "provider-keys-enhancement",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "c800685ff247cce564c3739e30cb75dbe4cd3f3542e3e8e6fca127756605145c",
+  "files": [
+    { "path": "openspec/changes/provider-keys-enhancement/proposal.md", "sha256": "22411fb88a01adefc9f97618a670d537c83e38835e6a03e9f593aed310649978" },
+    { "path": "openspec/changes/provider-keys-enhancement/design.md", "sha256": "9ebf083554e19311aa7b83f8d52e60058694b8d5c7f7fb56d61b1d554de2c4d6" },
+    { "path": "openspec/changes/provider-keys-enhancement/tasks.md", "sha256": "c0f442dea38931bf467ad9e9c608a68362c11cc9aa7765b100b2921d3a0bbc9d" },
+    { "path": "openspec/changes/provider-keys-enhancement/specs/provider-keys-circuit-breaker/spec.md", "sha256": "763ec2a7ae67f3a22c84abf8fff32b1819edc1e62bd862d45546908ce92aa36d" },
+    { "path": "openspec/changes/provider-keys-enhancement/specs/provider-keys-load-balancing/spec.md", "sha256": "62326533f6f22f5235fba4a2b09509795a134239311e0e5d8f8994cf4c2aa4e5" },
+    { "path": "openspec/changes/provider-keys-enhancement/specs/provider-keys-management/spec.md", "sha256": "b16a0b252a3a769cb72dbd20fffa2ed6f50d867ece90740a3b273e6a19aa4bd1" }
+  ]
+}

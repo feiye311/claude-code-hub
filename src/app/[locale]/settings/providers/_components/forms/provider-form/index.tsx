@@ -268,7 +268,7 @@ function ProviderFormContent({
       return t("errors.invalidUrl");
     }
 
-    if (!isEdit && !state.basic.key.trim()) {
+    if (!isEdit && state.basic.providerKeys.length === 0) {
       return t("errors.keyRequired");
     }
 
@@ -312,8 +312,8 @@ function ProviderFormContent({
             ? state.network.requestTimeoutNonStreamingSeconds * 1000
             : undefined;
 
-        // Handle key: in edit mode, only include if user provided a new key
-        const trimmedKey = state.basic.key.trim();
+        // Handle keys: pass as array for provider_keys table sync
+        const providerKeys = state.basic.providerKeys;
 
         // Static custom headers: validateForm has already rejected invalid input,
         // so the parse here is guaranteed to succeed at this point.
@@ -389,8 +389,8 @@ function ProviderFormContent({
         };
 
         if (isEdit && provider) {
-          // For edit: only include key if user provided a new one
-          const editFormData = trimmedKey ? { ...baseFormData, key: trimmedKey } : baseFormData;
+          // For edit: pass keys array for provider_keys sync
+          const editFormData = { ...baseFormData, keys: providerKeys };
           const res = await editProvider(provider.id, editFormData);
           if (!res.ok) {
             toast.error(res.error || t("errors.updateFailed"));
@@ -426,8 +426,8 @@ function ProviderFormContent({
 
           void doInvalidate();
         } else {
-          // For create: key is required
-          const createFormData = { ...baseFormData, key: trimmedKey };
+          // For create: pass keys array for provider_keys creation
+          const createFormData = { ...baseFormData, key: providerKeys.map(k => k.key).join("\n"), keys: providerKeys };
           const res = await addProvider(createFormData);
           if (!res.ok) {
             toast.error(res.error || t("errors.addFailed"));

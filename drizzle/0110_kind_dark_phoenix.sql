@@ -1,0 +1,1 @@
+ALTER TABLE "provider_keys" ADD COLUMN "deleted_at" timestamp with time zone;

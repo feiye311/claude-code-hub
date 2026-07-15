@@ -39,12 +39,18 @@ export interface TabConfig {
   icon: string;
 }
 
+export interface ProviderKeyInput {
+  key: string;
+  weight: number;
+}
+
 // Form state sections
 export interface BasicInfoState {
   name: string;
   url: string;
   key: string;
   websiteUrl: string;
+  providerKeys: ProviderKeyInput[];
 }
 
 export interface RoutingState {
@@ -142,6 +148,7 @@ export type ProviderFormAction =
   | { type: "SET_NAME"; payload: string }
   | { type: "SET_URL"; payload: string }
   | { type: "SET_KEY"; payload: string }
+  | { type: "SET_PROVIDER_KEYS"; payload: ProviderKeyInput[] }
   | { type: "SET_WEBSITE_URL"; payload: string }
   // Routing actions
   | { type: "SET_PROVIDER_TYPE"; payload: ProviderType }
