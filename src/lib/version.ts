@@ -11,8 +11,8 @@ export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || `v${packageJso
  * 用于获取最新版本
  */
 export const GITHUB_REPO = {
-  owner: "ding113",
-  repo: "claude-code-hub",
+  owner: process.env.NEXT_PUBLIC_GITHUB_OWNER || "ding113",
+  repo: process.env.NEXT_PUBLIC_GITHUB_REPO || "claude-code-hub",
 };
 
 type SemverPrereleaseId = { kind: "num"; value: number } | { kind: "str"; value: string };
