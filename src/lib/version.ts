@@ -11,7 +11,7 @@ export const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || `v${packageJso
  * 用于获取最新版本
  */
 export const GITHUB_REPO = {
-  owner: process.env.NEXT_PUBLIC_GITHUB_OWNER || "ding113",
+  owner: process.env.NEXT_PUBLIC_GITHUB_OWNER || "feiye311",
   repo: process.env.NEXT_PUBLIC_GITHUB_REPO || "claude-code-hub",
 };
 
